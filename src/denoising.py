@@ -34,15 +34,15 @@ def generate_low_rank_matrix(n, d, V_star, rank: int):
 nb_clients = 1
 
 # Replace these values with your desired dimensions
-d = 50  # number of columns
-n = np.random.randint(d, 2*d, nb_clients)    # random number of rows, between d and
+d = 100  # number of columns
+n = [100 for i in range(nb_clients)] #np.random.randint(d, 2*d, nb_clients)    # random number of rows, between d and
 V_star = ortho_group.rvs(dim=d)
 
 
 rank = 5
 low_rank = 6
 C = 4
-nu = 0.5
+nu = 2
 D = C * nu / 9
 bigest_sv = 1
 
@@ -50,7 +50,7 @@ std_error = 10**(-4)
 
 E_star = [generate_gaussian_matrix(n[i], d, std_error) for i in range(nb_clients)]
 S_star = [generate_low_rank_matrix(n[i] , d, V_star, rank) for i in range(nb_clients)]
-S = [s + e for (s, e) in zip(S_star, E_star)]
+S = [s for (s, e) in zip(S_star, E_star)]
 
 U, diag, V = np.linalg.svd(S[0])
 
@@ -65,10 +65,21 @@ print("Rank of S*(0):", matrix_rank(S_star[0]))
 print("Rank of S(0):", matrix_rank(S[0]))
 
 
+def generate_neighborood(n: int):
+    # Generate a random upper triangular matrix with 0s and 1s
+    upper_triangular = np.triu(np.random.randint(2, size=(n, n)), k=1)
+
+    # Create the symmetric matrix by concatenating the upper triangular matrix with its transpose
+    return upper_triangular + upper_triangular.T + np.eye(n, dtype=int)
+
+W = generate_neighborood(nb_clients)
+print("Graph of connections:")
+print(W)
+
 # Example usage:
 def F(S, U, V):
     # Define your objective function here
-    return np.mean([np.linalg.norm(s - u @ V.T, ord = 'fro')**2 / 2 for (s,u) in zip(S, U)])
+    return np.mean([np.linalg.norm(s - u @ v.T, ord = 'fro')**2 / 2 for (s,u, v) in zip(S, U, V)])
 
 
 def local_grad_F_wrt_U(S, U, V, nb_clients: int, E = None):
@@ -93,17 +104,19 @@ def local_grad_F_wrt_E(S, U, V, nb_clients: int, E):
 def smart_init(S: np.ndarray, low_rank: int, step_size: int) -> [np.ndarray, np.ndarray]:
     d = S[0].shape[1]
     Phi, Phi_prime = generate_gaussian_matrix(d, low_rank, 1), generate_gaussian_matrix(d, low_rank, 1)
-    U_0 = [s @ Phi / (np.sqrt(step_size) * C * bigest_sv) for s in S]
-    V_0 = Phi_prime * np.sqrt(step_size) * D * bigest_sv
+    U_0 = [s @ Phi / (np.sqrt(step_size * low_rank) * C * bigest_sv) for s in S]
+    V_0 = [Phi_prime * np.sqrt(step_size) * D * bigest_sv / np.sqrt(d) for s in S]
     return U_0, V_0
 
 
-def gradient_descent(S: np.ndarray, low_rank: int, step_size, num_iterations, with_smart_init: bool = True, with_error = False):
+def gradient_descent(S: np.ndarray, low_rank: int, step_size, num_iterations, with_smart_init: bool = True, decentralized = False, with_error = False):
     nb_clients = len(S)
+    d = S[0].shape[1]
     if with_smart_init:
         U0, V0 = smart_init(S, low_rank, step_size)
     else:
-        U0, V0 = [generate_gaussian_matrix(n, low_rank, 1) for i in range(nb_clients)], generate_gaussian_matrix(d, low_rank, std_error)
+        U0, V0 = ([generate_gaussian_matrix(n[i], low_rank, 1) / (10 * np.sqrt(low_rank)) for i in range(nb_clients)],
+                  [generate_gaussian_matrix(d, low_rank, 1) / (10 * np.sqrt(d)) for i in range(nb_clients)])
     if with_error:
         E0 = [generate_gaussian_matrix(n, d, 1) for i in range(nb_clients)]
         E = E0.copy()
@@ -114,12 +127,17 @@ def gradient_descent(S: np.ndarray, low_rank: int, step_size, num_iterations, wi
     error_S_star = [F(S_star, U0, V0)]
 
     for i in range(num_iterations):
+        Vold = V.copy()
         for j in range(nb_clients):
-            U[j] -= (step_size * local_grad_F_wrt_U(S[j], U[j], V, nb_clients, E[j]))
-        V -= (step_size * np.sum([local_grad_F_wrt_V(S[i], U[i], V, nb_clients, E[j]) for i in range(nb_clients)], axis=0))
+            U[j] -= (step_size * local_grad_F_wrt_U(S[j], U[j], V[j], nb_clients, E[j]))
+            if not decentralized:
+                V[j] -= (step_size * np.sum([local_grad_F_wrt_V(S[k], U[k], V[j], nb_clients, E[j]) for k in range(nb_clients)], axis=0))
+            else:
+                rho = 0.001
+                V[j] = (1-rho) * Vold[j] + rho * np.mean([ W[j-1,k-1] * Vold[k] for k in range(nb_clients)], axis=0) - (step_size * local_grad_F_wrt_V(S[j], U[j], V[j], nb_clients, E[j]))
         if E[0] is not None:
             for j in range(nb_clients):
-                E[j] -= (step_size * np.sum([local_grad_F_wrt_E(S[i], U[i], V, nb_clients, E[j]) for i in range(nb_clients)], axis=0))
+                E[j] -= (step_size * np.sum([local_grad_F_wrt_E(S[i], U[i], V[j], nb_clients, E[j]) for i in range(nb_clients)], axis=0))
         error_S.append(F(S, U, V))
         error_S_star.append(F(S_star, U, V))
 
@@ -132,7 +150,7 @@ num_iterations = 150
 
 # Run gradient descent
 result_params, error_S, error_S_star = gradient_descent(S, low_rank, step_size, num_iterations)
-result_params_wo, error_S_wo, error_S_star_wo = gradient_descent(S, low_rank, step_size, num_iterations)
+result_params_wo, error_S_wo, error_S_star_wo = gradient_descent(S, low_rank, step_size, num_iterations, with_smart_init=False)
 
 # print("Optimal parameters:", result_params)
 print("Minimum value of F:", F(S, result_params[0], result_params[1]))
@@ -151,10 +169,11 @@ fig, axs = plt.subplots(1, 1, figsize=(5, 4))
 axs.plot(np.log10(error_S_star), label="w. smart init.")
 axs.plot(np.log10(error_S_star_wo), label="w.o. smart init.")
 axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
-axs.set_ylabel("$\\frac{1}{2N} \sum_{i=1}^N \|\mathbf{S}_* - \mathbf{U} \mathbf{V}^\\top \|^2_ F$", fontsize=FONTSIZE)
-axs.set_title("Error to $\mathbf{S}_*$", fontsize=FONTSIZE)
+# axs.set_ylabel("$\\frac{1}{2N} \sum_{i=1}^N \|\mathbf{S} - \mathbf{U} \mathbf{V}^\\top \|^2_ F$", fontsize=FONTSIZE)
+axs.set_ylabel("Relative error", fontsize=FONTSIZE)
+# axs.set_title("Error to $\mathbf{S}$", fontsize=FONTSIZE)
 axs.legend(fontsize=FONTSIZE)
-plt.savefig("convergence_N1.png", dpi=100)
+plt.savefig(f"convergence_N{nb_clients}.png", dpi=100)
 
 
 
