@@ -2,6 +2,7 @@
 Created by Constantin Philippenko, 11th December 2023.
 """
 import numpy as np
+from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
 

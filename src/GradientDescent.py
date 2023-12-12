@@ -5,9 +5,10 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
+from scipy.sparse.linalg import svds
 
 from src.Client import Client, Network
-from src.MFInitialization import smart_MF_initialization, random_MF_initialization, smart_MF_initialization_for_GD_on_U
+from src.MFInitialization import *
 
 C, NU = 4, 2
 D = C * NU / 9
@@ -33,14 +34,32 @@ class AbstractGradientDescent(ABC):
             smart_MF_initialization(self.network, self.step_size, C, D)
         elif self.init_type == "SMART_FOR_GD_ON_U":
             smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
+        elif self.init_type == "BI_SMART":
+            bi_smart_MF_initialization(self.network, self.step_size, C, D)
+        elif self.init_type == "BI_SMART_FOR_GD_ON_U":
+            bi_smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
+        elif self.init_type == "ORTHO":
+            ortho_MF_initialization(self.network, self.step_size, C, D)
+        elif self.init_type == "ORTHO_FOR_GD_ON_U":
+            ortho_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
         elif self.init_type == "RANDOM":
             random_MF_initialization(self.network, self.step_size)
         else:
             raise ValueError("Unrecognized type of initialization.")
+        self.smallest_sv = self.__compute_smallest_eigenvalues__()
 
     @abstractmethod
     def __epoch_update__(self):
         pass
+
+    def __compute_smallest_eigenvalues__(self):
+        smallest_sv_U = 0
+        smallest_sv_V = 0
+        for client in self.network.clients:
+            smallest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='SM')[1][0]
+            smallest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='SM')[1][0]
+        print("{2}\nSmallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V, self.name()))
+        return (smallest_sv_U, smallest_sv_V)
 
     def __F__(self):
         return np.mean([client.loss() for client in self.network.clients])
@@ -110,7 +129,7 @@ class GD_ON_V(AbstractGradientDescent):
 class GD_ON_U(AbstractGradientDescent):
 
     def name(self):
-        return "EmbarrassinglyParallelGD"
+        return "GD on U"
 
     def __epoch_update__(self):
         for client in self.network.clients:
