@@ -10,7 +10,7 @@ from scipy.sparse.linalg import svds
 from src.Client import Client, Network
 from src.MFInitialization import *
 
-C, NU = 4, 2
+C, NU = 4, 1
 D = C * NU / 9
 
 class AbstractGradientDescent(ABC):
@@ -18,11 +18,13 @@ class AbstractGradientDescent(ABC):
     def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str) -> None:
         # super().__init__()
         self.network = network
+        self.init_type = init_type
         self.nb_clients = network.nb_clients
 
-        self.step_size = 9 / (4 * C * NU)
+        self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
+        self.step_size = 9 / (4 * C * NU * self.largest_sv_S)
+        self.__descent_initialization__()
         self.nb_epoch = nb_epoch
-        self.init_type = init_type
         self.rho = rho
 
     @abstractmethod
@@ -31,41 +33,57 @@ class AbstractGradientDescent(ABC):
 
     def __descent_initialization__(self):
         if self.init_type == "SMART":
-            smart_MF_initialization(self.network, self.step_size, C, D)
+            smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "SMART_FOR_GD_ON_U":
-            smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
+            smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "BI_SMART":
-            bi_smart_MF_initialization(self.network, self.step_size, C, D)
+            bi_smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "BI_SMART_FOR_GD_ON_U":
-            bi_smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
+            bi_smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "ORTHO":
-            ortho_MF_initialization(self.network, self.step_size, C, D)
+            ortho_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "ORTHO_FOR_GD_ON_U":
-            ortho_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D)
+            ortho_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "RANDOM":
             random_MF_initialization(self.network, self.step_size)
         else:
             raise ValueError("Unrecognized type of initialization.")
-        self.smallest_sv = self.__compute_smallest_eigenvalues__()
+        self.smallest_sv = self.__compute_smallest_eigenvalues_init__()
+        self.largest_sv = self.__compute_largest_eigenvalues_init__()
 
     @abstractmethod
     def __epoch_update__(self):
         pass
 
-    def __compute_smallest_eigenvalues__(self):
+    def __compute_largest_eigenvalues_dataset__(self):
+        largest_sv_S = 0
+        for client in self.network.clients:
+            largest_sv_S += svds(client.S, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
+        print("{0}, {1}:\nDataset largest singular value: {2}".format(self.name(), self.init_type, largest_sv_S))
+        return largest_sv_S
+
+    def __compute_largest_eigenvalues_init__(self):
+        largest_sv_U = 0
+        largest_sv_V = 0
+        for client in self.network.clients:
+            largest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
+            largest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
+        print("Largest singular value: ({0}, {1})".format(largest_sv_U, largest_sv_V))
+        return (largest_sv_U, largest_sv_V)
+
+    def __compute_smallest_eigenvalues_init__(self):
         smallest_sv_U = 0
         smallest_sv_V = 0
         for client in self.network.clients:
             smallest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='SM')[1][0]
             smallest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='SM')[1][0]
-        print("{2}\nSmallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V, self.name()))
+        print("Smallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V, self.name(), self.init_type))
         return (smallest_sv_U, smallest_sv_V)
 
     def __F__(self):
         return np.mean([client.loss() for client in self.network.clients])
 
     def gradient_descent(self):
-        self.__descent_initialization__()
         error = [self.__F__()]
 
         for i in range(self.nb_epoch):

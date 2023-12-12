@@ -1,7 +1,9 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
 """
+import networkx as nx
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
@@ -16,13 +18,24 @@ class Network:
         self.nb_samples = nb_samples
         self.clients = self.generate_network_of_clients(rank_S)
         self.W = self.generate_neighborood()
+        self.plot_graph_connectivity()
 
-    def generate_neighborood(self):
-        # Generate a random upper triangular matrix with 0s and 1s
-        upper_triangular = np.triu(np.random.randint(2, size=(self.nb_clients, self.nb_clients)), k=1)
+    def plot_graph_connectivity(self):
+        # We remove the self connection to avoid loop on the graph.
+        G = nx.from_numpy_matrix(self.W - np.eye(self.nb_clients, dtype=int))
+        # Draw the graph
+        pos = nx.spring_layout(G)  # Positions nodes using Fruchterman-Reingold force-directed algorithm
+        nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=500, font_weight='bold', font_size=10)
+        plt.savefig(f"connectivity_graph_N{self.nb_clients}_r{self.plunging_dimension}.pdf", dpi=600,
+                    bbox_inches='tight')
 
-        # Create the symmetric matrix by concatenating the upper triangular matrix with its transpose
-        return upper_triangular + upper_triangular.T + np.eye(self.nb_clients, dtype=int)
+    def generate_neighborood(self, type: int = "REGULAR"):
+        if type == "REGULAR":
+            return nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
+        elif type == "ERDOS":
+            return nx.to_numpy_matrix(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
+        else:
+            raise ValueError("Unrecognized type of connectivity graph.")
 
     def generate_network_of_clients(self, rank_S: int):
         clients = []
@@ -40,7 +53,7 @@ class Network:
 
         for k in range(1, rank + 1):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1
+            D_star[k, k] = 1 #rank - k
 
         return U_star @ D_star @ V_star
 
