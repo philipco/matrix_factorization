@@ -10,8 +10,8 @@ from scipy.sparse.linalg import svds
 from src.Client import Client, Network
 from src.MFInitialization import *
 
-C, NU = 4, 1
-D = C * NU / 9
+C = 4
+D = C / 9
 
 class AbstractGradientDescent(ABC):
 
@@ -22,7 +22,7 @@ class AbstractGradientDescent(ABC):
         self.nb_clients = network.nb_clients
 
         self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
-        self.step_size = 9 / (4 * C * NU * self.largest_sv_S)
+        self.step_size = 9 / (4 * C * self.largest_sv_S)
         self.__descent_initialization__()
         self.nb_epoch = nb_epoch
         self.rho = rho
@@ -31,18 +31,23 @@ class AbstractGradientDescent(ABC):
     def name(self):
         pass
 
+    @abstractmethod
+    def variable_optimization(self):
+        pass
+
     def __descent_initialization__(self):
-        if self.init_type == "SMART":
+        # np.random.seed(42)
+        if self.init_type == "SMART" and self.variable_optimization() != "U":
             smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
-        elif self.init_type == "SMART_FOR_GD_ON_U":
+        elif self.init_type == "SMART" and self.variable_optimization() == "U":
             smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
-        elif self.init_type == "BI_SMART":
+        elif self.init_type == "BI_SMART" and self.variable_optimization() != "U":
             bi_smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
-        elif self.init_type == "BI_SMART_FOR_GD_ON_U":
+        elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
             bi_smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
-        elif self.init_type == "ORTHO":
+        elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
             ortho_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
-        elif self.init_type == "ORTHO_FOR_GD_ON_U":
+        elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
             ortho_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
         elif self.init_type == "RANDOM":
             random_MF_initialization(self.network, self.step_size)
@@ -59,7 +64,7 @@ class AbstractGradientDescent(ABC):
         largest_sv_S = 0
         for client in self.network.clients:
             largest_sv_S += svds(client.S, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
-        print("{0}, {1}:\nDataset largest singular value: {2}".format(self.name(), self.init_type, largest_sv_S))
+        # print("{0}, {1}:\nDataset largest singular value: {2}".format(self.name(), self.init_type, largest_sv_S))
         return largest_sv_S
 
     def __compute_largest_eigenvalues_init__(self):
@@ -77,7 +82,7 @@ class AbstractGradientDescent(ABC):
         for client in self.network.clients:
             smallest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='SM')[1][0]
             smallest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='SM')[1][0]
-        print("Smallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V, self.name(), self.init_type))
+        print("Smallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V))
         return (smallest_sv_U, smallest_sv_V)
 
     def __F__(self):
@@ -97,6 +102,9 @@ class GD(AbstractGradientDescent):
     def name(self):
         return "GD"
 
+    def variable_optimization(self):
+        return "U,V"
+
     def __epoch_update__(self):
         gradV = []
         Vold = []
@@ -107,13 +115,16 @@ class GD(AbstractGradientDescent):
             Vold.append(client.V)
         for client in self.network.clients:
             client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.mean([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
+                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
 
 class AlternateGD(AbstractGradientDescent):
 
     def name(self):
         return "Alternate GD"
+
+    def variable_optimization(self):
+        return "U,V"
 
     def __epoch_update__(self):
         gradV = []
@@ -124,13 +135,16 @@ class AlternateGD(AbstractGradientDescent):
             Vold.append(client.V)
         for client in self.network.clients:
             client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.mean([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
+                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
 
 class GD_ON_V(AbstractGradientDescent):
 
     def name(self):
         return "GD on V"
+
+    def variable_optimization(self):
+        return "V"
 
     def __epoch_update__(self):
         gradV = []
@@ -140,7 +154,7 @@ class GD_ON_V(AbstractGradientDescent):
             Vold.append(client.V)
         for client in self.network.clients:
             client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.mean([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
+                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
 
 
@@ -148,6 +162,9 @@ class GD_ON_U(AbstractGradientDescent):
 
     def name(self):
         return "GD on U"
+
+    def variable_optimization(self):
+        return "U"
 
     def __epoch_update__(self):
         for client in self.network.clients:
