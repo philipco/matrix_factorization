@@ -10,20 +10,23 @@ from scipy.sparse.linalg import svds
 from src.Client import Client, Network
 from src.MFInitialization import *
 
-C = 4
-D = C / 9
+
+# D = C
 
 class AbstractGradientDescent(ABC):
 
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str) -> None:
+    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, C: int = 16) -> None:
         # super().__init__()
         self.network = network
         self.init_type = init_type
         self.nb_clients = network.nb_clients
+        self.C = C
 
         self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
-        self.step_size = 9 / (4 * C * self.largest_sv_S)
+        self.step_size, self.sigma_max = 1 / (self.largest_sv_S), None
         self.__descent_initialization__()
+        if self.sigma_max is not None:
+            self.step_size = 1 / (self.C * self.sigma_max)
         self.nb_epoch = nb_epoch
         self.rho = rho
 
@@ -38,22 +41,22 @@ class AbstractGradientDescent(ABC):
     def __descent_initialization__(self):
         # np.random.seed(42)
         if self.init_type == "SMART" and self.variable_optimization() != "U":
-            smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = smart_MF_initialization(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "SMART" and self.variable_optimization() == "U":
-            smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "BI_SMART" and self.variable_optimization() != "U":
-            bi_smart_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = bi_smart_MF_initialization(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
-            bi_smart_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
-            ortho_MF_initialization(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
-            ortho_MF_initialization_for_GD_on_U(self.network, self.step_size, C, D, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = ortho_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
         elif self.init_type == "RANDOM":
-            random_MF_initialization(self.network, self.step_size)
+            random_MF_initialization(self.network)
         else:
             raise ValueError("Unrecognized type of initialization.")
-        self.smallest_sv = self.__compute_smallest_eigenvalues_init__()
+        # self.smallest_sv = self.__compute_smallest_eigenvalues_init__()
         self.largest_sv = self.__compute_largest_eigenvalues_init__()
 
     @abstractmethod
@@ -73,7 +76,7 @@ class AbstractGradientDescent(ABC):
         for client in self.network.clients:
             largest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
             largest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
-        print("Largest singular value: ({0}, {1})".format(largest_sv_U, largest_sv_V))
+        # print("Largest singular value: ({0}, {1})".format(largest_sv_U, largest_sv_V))
         return (largest_sv_U, largest_sv_V)
 
     def __compute_smallest_eigenvalues_init__(self):

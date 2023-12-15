@@ -29,7 +29,12 @@ if __name__ == '__main__':
 
     optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["RANDOM", "SMART", "BI_SMART", "ORTHO"]
+    inits = ["SMART", "BI_SMART", "ORTHO"]
+
+    # RANDOM initialization for optimization on U,V
+    algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")
+    errors["UV"]["RANDOM"] = algo.gradient_descent()
+    print(f"RANDOM\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
         print(f"=== {key} ===")
@@ -45,6 +50,7 @@ if __name__ == '__main__':
 
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
+    axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
     for key in optimizations.keys():
         for init in inits:
             axs.plot(np.log10(errors[key][init]), color=optim_colors[key], linestyle=init_linestyle[init])

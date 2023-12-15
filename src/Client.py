@@ -4,7 +4,6 @@ Created by Constantin Philippenko, 11th December 2023.
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
 
@@ -21,8 +20,10 @@ class Network:
         self.plot_graph_connectivity()
 
     def plot_graph_connectivity(self):
+        if self.nb_clients == 1:
+            return
         # We remove the self connection to avoid loop on the graph.
-        G = nx.from_numpy_matrix(self.W - np.eye(self.nb_clients, dtype=int))
+        G = nx.from_numpy_matrix(self.W - np.diag(np.diag(self.W)))
         # Draw the graph
         pos = nx.spring_layout(G)  # Positions nodes using Fruchterman-Reingold force-directed algorithm
         nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=500, font_weight='bold', font_size=10)
@@ -30,43 +31,49 @@ class Network:
                     bbox_inches='tight')
 
     def generate_neighborood(self, type: int = "REGULAR"):
+        if self.nb_clients == 1:
+            return np.array([[1]])
         if type == "REGULAR":
-            return nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
         elif type == "ERDOS":
-            return nx.to_numpy_matrix(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_matrix(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
         else:
             raise ValueError("Unrecognized type of connectivity graph.")
+        W = np.array(W / np.sum(W, axis=1))
+        assert (np.sum(W, axis=1) == 1).all(), "W is not doubly stochastic."
+        return W
 
     def generate_network_of_clients(self, rank_S: int):
         clients = []
-        V_star = ortho_group.rvs(dim=self.dim)
+        V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
-            S_star = self.generate_low_rank_matrix(V_star, rank_S)
-            clients.append(Client(c_id, self.dim, self.nb_samples, S_star, self.plunging_dimension))
+            U_star, D_star = self.generate_low_rank_matrix(rank_S)
+            clients.append(Client(c_id, self.dim, self.nb_samples, U_star, D_star, V_star, self.plunging_dimension))
         return clients
 
-    def generate_low_rank_matrix(self, V_star, rank: int):
+    def generate_low_rank_matrix(self, rank: int):
         assert self.dim <= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
-        U_star = ortho_group.rvs(dim=self.nb_samples)
-        D_star = np.zeros((self.nb_samples, self.dim))
+        U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
+        D_star = np.zeros((rank, rank))
 
-        for k in range(1, rank + 1):
+        for k in range(rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1 #rank - k
+            D_star[k, k] = rank - k #rank - k
 
-        return U_star @ D_star @ V_star
+        return U_star, D_star
 
 
 class Client:
 
-    def __init__(self, id: int, dim: int, nb_samples: int, S, plunging_dimension: int) -> None:
+    def __init__(self, id: int, dim: int, nb_samples: int, U_star, D_star, V_star, plunging_dimension: int) -> None:
         super().__init__()
         self.id = id
         self.dim = dim
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
-        self.S = S
+        self.S = U_star @ D_star @ V_star.T
+        self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U = None
         self.V = None
 
