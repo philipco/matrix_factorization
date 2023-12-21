@@ -32,9 +32,6 @@ if __name__ == '__main__':
     # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
     optim = GD_ON_U
     C_range = [9, 10, 16, 25, 36]
-    value = np.array([7.5, 7, 4.3, 2.6, 1.6])
-    plt.plot(C_range, value ** -1)
-    plt.show()
 
     errors = []
     sigma_min = []
@@ -63,7 +60,7 @@ if __name__ == '__main__':
 
 
     axs.legend(fontsize=FONTSIZE)
-    axs.set_xlabel(r"$\sigma_{\mathrm{min}}(\mathbf{D_*} \mathbf{U_*}^\top \mathbf{\Phi})$", fontsize=FONTSIZE)
+    axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{D_*} \mathbf{U_*}^\top \mathbf{\Phi})$", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
     plt.savefig(f"convergence_vs_stepsize_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
 

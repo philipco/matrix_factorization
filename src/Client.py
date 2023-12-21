@@ -9,12 +9,14 @@ from scipy.stats import ortho_group
 
 class Network:
 
-    def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int):
+    def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int, constant_eigs = None):
         super().__init__()
         self.nb_clients = nb_clients
         self.dim = dim
         self.plunging_dimension = plunging_dimension
         self.nb_samples = nb_samples
+        self.constant_eigs = constant_eigs
+
         self.clients = self.generate_network_of_clients(rank_S)
         self.W = self.generate_neighborood()
         self.plot_graph_connectivity()
@@ -57,11 +59,16 @@ class Network:
         U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
         D_star = np.zeros((rank, rank))
 
-        for k in range(rank):
+        D_star[0, 0] = 3
+        for k in range(1, rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = rank - k #rank - k
+            D_star[k, k] = 1
 
         return U_star, D_star
+
+    def reset_eig(self, eigs):
+        for client in self.clients:
+            client.reset_eig(eigs)
 
 
 class Client:
@@ -74,15 +81,21 @@ class Client:
         self.plunging_dimension = plunging_dimension
         self.S = U_star @ D_star @ V_star.T
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
-        self.U = None
-        self.V = None
+        self.U, self.U_past, self.U_half = None, None, None
+        self.V, self.V_past = None, None
+
+    def reset_eig(self, eigs):
+        for k in range(len(eigs)):
+            # WARNING: For now we have eigenvalues equal to 1 or to 0.
+            self.D_star[k, k] = eigs[k]
+        self.S = self.U_star @ self.D_star @ self.V_star.T
 
     def loss(self):
         return np.linalg.norm(self.S - self.U @ self.V.T, ord='fro') ** 2 / 2
 
-    def local_grad_wrt_U(self):
+    def local_grad_wrt_U(self, U):
         """Gradient of F w.r.t. variable U."""
-        return (self.U @ self.V.T - self.S) @ self.V
+        return (U @ self.V.T - self.S) @ self.V
 
     def local_grad_wrt_V(self):
         """Gradient of F w.r.t. variable V."""
@@ -91,9 +104,9 @@ class Client:
     def set_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
-        self.U = U
+        self.U, self.U_past, self.U_half = U, U, U
 
     def set_V(self, V):
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
-        self.V = V
+        self.V, self.V_past = V, V

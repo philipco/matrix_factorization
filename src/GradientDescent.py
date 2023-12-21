@@ -11,24 +11,22 @@ from src.Client import Client, Network
 from src.MFInitialization import *
 
 
-# D = C
-
 class AbstractGradientDescent(ABC):
 
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, C: int = 16) -> None:
-        # super().__init__()
+    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, momentum: int = 0.95, C: int = 16) -> None:
         self.network = network
         self.init_type = init_type
         self.nb_clients = network.nb_clients
         self.C = C
 
         self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
-        self.step_size, self.sigma_max = 1 / (self.largest_sv_S), None
         self.__descent_initialization__()
         if self.sigma_max is not None:
-            self.step_size = 1 / (self.C * self.sigma_max)
+            self.step_size = 1 / (self.sigma_max**2)
         self.nb_epoch = nb_epoch
         self.rho = rho
+        self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
+        print(f"Momentum: {self.momentum}")
 
     @abstractmethod
     def name(self):
@@ -41,17 +39,17 @@ class AbstractGradientDescent(ABC):
     def __descent_initialization__(self):
         # np.random.seed(42)
         if self.init_type == "SMART" and self.variable_optimization() != "U":
-            self.sigma_min, self.sigma_max = smart_MF_initialization(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = smart_MF_initialization(self.network)
         elif self.init_type == "SMART" and self.variable_optimization() == "U":
-            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "BI_SMART" and self.variable_optimization() != "U":
-            self.sigma_min, self.sigma_max = bi_smart_MF_initialization(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = bi_smart_MF_initialization(self.network)
         elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
-            self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
-            self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
-            self.sigma_min, self.sigma_max = ortho_MF_initialization_for_GD_on_U(self.network, self.C, self.largest_sv_S)
+            self.sigma_min, self.sigma_max = ortho_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "RANDOM":
             random_MF_initialization(self.network)
         else:
@@ -171,4 +169,7 @@ class GD_ON_U(AbstractGradientDescent):
 
     def __epoch_update__(self):
         for client in self.network.clients:
-            client.U = client.U - self.step_size * client.local_grad_wrt_U()
+            # client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U)
+            client.U_past = client.U
+            client.U = client.U_half - self.step_size * client.local_grad_wrt_U(client.U_half)
+            client.U_half = client.U + self.momentum * (client.U - client.U_past)

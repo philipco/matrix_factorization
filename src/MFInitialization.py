@@ -28,7 +28,7 @@ def random_MF_initialization(network: Network):
 
 
 
-def smart_MF_initialization(network: Network, C: int, largest_sv_S: int):
+def smart_MF_initialization(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_U = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
@@ -37,14 +37,13 @@ def smart_MF_initialization(network: Network, C: int, largest_sv_S: int):
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0] # Tester avec sigma max au lieu de largest !
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_V = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / np.sqrt(network.dim))
-        client.set_U(client.S @ Phi_U /(np.sqrt(step_size * largest_sv_S**2)))
-        client.set_V(Phi_V * np.sqrt(step_size * largest_sv_S**2))
+        client.set_U(client.S @ Phi_U)
+        client.set_V(Phi_V)
     return sigma_min, sigma_max
 
-def smart_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_S: int):
+def smart_MF_initialization_for_GD_on_U(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
@@ -53,15 +52,14 @@ def smart_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_S: 
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0]
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_U = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1 / np.sqrt(network.nb_samples))
-        client.set_U(Phi_U * np.sqrt(step_size * largest_sv_S**2))
-        client.set_V(client.S.T @ Phi_V / (np.sqrt(step_size * largest_sv_S**2)))
+        client.set_U(Phi_U)
+        client.set_V(client.S.T @ Phi_V)
     return sigma_min, sigma_max
 
 
-def bi_smart_MF_initialization(network: Network, C: int, largest_sv_S: int):
+def bi_smart_MF_initialization(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_U = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
@@ -70,14 +68,13 @@ def bi_smart_MF_initialization(network: Network, C: int, largest_sv_S: int):
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0]
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1 / np.sqrt(network.nb_samples))
-        client.set_U(client.S @ Phi_U /(np.sqrt(step_size * largest_sv_S**2)))
-        client.set_V(client.S.T @ Phi_V * np.sqrt(step_size * largest_sv_S**2))
+        client.set_U(client.S @ Phi_U)
+        client.set_V(client.S.T @ Phi_V)
     return sigma_min, sigma_max
 
-def bi_smart_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_S: int):
+def bi_smart_MF_initialization_for_GD_on_U(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
@@ -86,14 +83,13 @@ def bi_smart_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0]
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_U = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / np.sqrt(network.dim))
-        client.set_U(client.S @ Phi_U * np.sqrt(step_size * largest_sv_S**2))
-        client.set_V(client.S.T @ Phi_V / (np.sqrt(step_size * largest_sv_S**2)))
+        client.set_U(client.S @ Phi_U)
+        client.set_V(client.S.T @ Phi_V)
     return sigma_min, sigma_max
 
-def ortho_MF_initialization(network: Network, C: int, largest_sv_S: int):
+def ortho_MF_initialization(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_U = ortho_group.rvs(network.dim).T[:network.plunging_dimension].T * np.sqrt(network.dim)
@@ -102,14 +98,13 @@ def ortho_MF_initialization(network: Network, C: int, largest_sv_S: int):
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0]
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_V = ortho_group.rvs(network.dim).T[:network.plunging_dimension].T
-        client.set_U(client.S @ Phi_U /(np.sqrt(step_size * largest_sv_S**2)))
-        client.set_V(Phi_V * np.sqrt(step_size * largest_sv_S**2))
+        client.set_U(client.S @ Phi_U)
+        client.set_V(Phi_V)
     return sigma_min, sigma_max
 
-def ortho_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_S: int):
+def ortho_MF_initialization_for_GD_on_U(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_V = ortho_group.rvs(network.nb_samples).T[:network.plunging_dimension].T * np.sqrt(network.nb_samples)
@@ -118,15 +113,14 @@ def ortho_MF_initialization_for_GD_on_U(network: Network, C: int, largest_sv_S: 
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0]
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_U = ortho_group.rvs(network.nb_samples).T[:network.plunging_dimension].T #* np.sqrt(network.nb_samples)
-        client.set_U(Phi_U * np.sqrt(step_size * largest_sv_S**2))
-        client.set_V(client.S.T @ Phi_V / (np.sqrt(step_size * largest_sv_S**2)))
+        client.set_U(Phi_U)
+        client.set_V(client.S.T @ Phi_V)
     return sigma_min, sigma_max
 
 
-def smart_sparse_MF_initialization(network: Network, C: int, largest_sv_S: int):
+def smart_sparse_MF_initialization(network: Network):
     sigma_min = 0
     while sigma_min <= SINGULARVALUE_CLIP:
         Phi_U = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
@@ -135,9 +129,8 @@ def smart_sparse_MF_initialization(network: Network, C: int, largest_sv_S: int):
         sigma_max = svds(key_matrix, k=1, which='LM')[1][0] # Tester avec sigma max au lieu de largest !
     print(f"===> kappa: {sigma_max/sigma_min}")
     print(f"===> sigma_min: {sigma_min}")
-    step_size = 1 / sigma_max
     for client in network.clients:
         Phi_V = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / np.sqrt(network.dim))
-        client.set_U(client.S @ Phi_U /(np.sqrt(step_size * largest_sv_S**2)))
-        client.set_V(Phi_V * np.sqrt(step_size * largest_sv_S**2))
+        client.set_U(client.S @ Phi_U)
+        client.set_V(Phi_V * 1)
     return sigma_min, sigma_max
