@@ -20,6 +20,10 @@ matplotlib.rcParams.update({
 NB_EPOCHS = 2000
 NB_CLIENTS = 1
 
+USE_MOMENTUM = True
+L1_COEF = 10**-2
+L2_COEF = 0
+
 NB_RUNS = 50
 
 FONTSIZE=9
@@ -40,11 +44,19 @@ if __name__ == '__main__':
 
     for init in inits:
         print(f"=== {init} ===")
+        
+        vector_values = np.array([]) # To evaluate sparsity.
         for k in range(NB_RUNS):
-            algo = optim(network, NB_EPOCHS, 0.01, init)
+
+            algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=L1_COEF, l2_coef=L2_COEF)
             errors[init].append(algo.gradient_descent()[-1])
             sigma_min[init].append(algo.sigma_min)
             cond[init].append(algo.sigma_min/algo.sigma_max)
+
+            if optim == GD_ON_U:
+                vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
+            elif optim == GD_ON_V:
+                vector_values = np.concatenate(vector_values, np.concatenate(network.clients[0].V))
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -72,7 +84,14 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
     for init in inits:
         x, y = zip(*sorted(zip(cond[init], np.log10(errors[init]))))
-        axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=init_linestyle[init])
+        if USE_MOMENTUM:
+            axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=init_linestyle[init])
+            axs.set_xlabel(r"$\sigma_{\mathrm{min}}(\mathbf{V_0}) / \sigma_{\mathrm{max}}(\mathbf{V_0})$",
+                           fontsize=FONTSIZE)
+        else:
+            axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=init_linestyle[init])
+            axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V_0}) / \sigma^2_{\mathrm{max}}(\mathbf{V_0})$",
+                           fontsize=FONTSIZE)
 
     init_legend = [Line2D([0], [0], linestyle="-", color=COLORS[1], lw=2, label='smart init'),
                    Line2D([0], [0], linestyle="--", color=COLORS[2], lw=2, label='bismart init'),
@@ -80,8 +99,28 @@ if __name__ == '__main__':
 
     l2 = axs.legend(handles=init_legend, loc='center right', fontsize=FONTSIZE)
     axs.add_artist(l2)
-    axs.set_xlabel(r"$\sigma_{\mathrm{min}}(\mathbf{V_0}) / \sigma_{\mathrm{max}}(\mathbf{V_0})$", fontsize=FONTSIZE)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    plt.savefig(f"convergence_vs_cond_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600,
-                bbox_inches='tight')
+    title = f"convergence_vs_cond_N{network.nb_clients}_r{network.plunging_dimension}"
+    if algo.l1_coef != 0:
+        title += f"_lasso{L1_COEF}"
+    if algo.l2_coef != 0:
+        title += f"_ridge{L2_COEF}"
+    if USE_MOMENTUM:
+        title += f"_momentum"
+    plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
+
+
+    plt.figure(figsize=(6, 4))
+    plt.hist(np.log(vector_values), bins=15, alpha=0.7)
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    title = f"hist_N{network.nb_clients}_r{network.plunging_dimension}"
+    if algo.l1_coef != 0:
+        title += f"_lasso{L1_COEF}"
+    if algo.l2_coef != 0:
+        title += f"_ridge{L2_COEF}"
+    if USE_MOMENTUM:
+        title += f"_momentum"
+    plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 

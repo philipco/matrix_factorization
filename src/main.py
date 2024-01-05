@@ -19,17 +19,18 @@ matplotlib.rcParams.update({
 
 NB_EPOCHS = 2500
 NB_CLIENTS = 1
+L1_COEF = 10**-6
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 6)
+    network = Network(NB_CLIENTS, 100, 1000, 5, 5)
 
     optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["SMART", "BI_SMART", "ORTHO"]
+    inits = ["SMART"]  #, "BI_SMART", "ORTHO"]
 
     # RANDOM initialization for optimization on U,V
     algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")

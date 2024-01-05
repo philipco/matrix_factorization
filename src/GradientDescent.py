@@ -2,31 +2,39 @@
 Created by Constantin Philippenko, 11th December 2023.
 """
 from abc import ABC, abstractmethod
-from typing import List
-
-import numpy as np
-from scipy.sparse.linalg import svds
-
-from src.Client import Client, Network
 from src.MFInitialization import *
 
 
 class AbstractGradientDescent(ABC):
 
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, momentum: int = 0.95, C: int = 16) -> None:
+    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
+                 use_momentum: bool = False) -> None:
         self.network = network
         self.init_type = init_type
         self.nb_clients = network.nb_clients
-        self.C = C
+        self.nb_epoch = nb_epoch
+        self.rho = rho
 
+        self.sigma_max, self.sigma_min = None, None
+
+        # STEP-SIZE
         self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
         self.__descent_initialization__()
         if self.sigma_max is not None:
             self.step_size = 1 / (self.sigma_max**2)
-        self.nb_epoch = nb_epoch
-        self.rho = rho
-        self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
-        print(f"Momentum: {self.momentum}")
+        else:
+            self.step_size = 1 / (self.largest_sv_S**2)
+
+        # MOMEMTUM
+        self.use_momentum = use_momentum
+        if self.sigma_max is not None:
+            self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
+        else:
+            self.momentum = 1 / self.largest_sv_S**2
+
+        # REGULARIZATION
+        self.l1_coef = l1_coef
+        self.l2_coef = l2_coef
 
     @abstractmethod
     def name(self):
@@ -110,8 +118,8 @@ class GD(AbstractGradientDescent):
         gradV = []
         Vold = []
         for client in self.network.clients:
-            gradU = self.step_size * client.local_grad_wrt_U()
-            gradV.append( client.local_grad_wrt_V())
+            gradU = self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
             client.U -= self.step_size * gradU
             Vold.append(client.V)
         for client in self.network.clients:
@@ -131,8 +139,8 @@ class AlternateGD(AbstractGradientDescent):
         gradV = []
         Vold = []
         for client in self.network.clients:
-            client.U -= self.step_size * self.step_size * client.local_grad_wrt_U()
-            gradV.append( client.local_grad_wrt_V())
+            client.U -= self.step_size * self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
             Vold.append(client.V)
         for client in self.network.clients:
             client.V = ((1 - self.rho) * Vold[client.id]
@@ -151,7 +159,7 @@ class GD_ON_V(AbstractGradientDescent):
         gradV = []
         Vold = []
         for client in self.network.clients:
-            gradV.append(client.local_grad_wrt_V())
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
             Vold.append(client.V)
         for client in self.network.clients:
             client.V = ((1 - self.rho) * Vold[client.id]
@@ -169,7 +177,11 @@ class GD_ON_U(AbstractGradientDescent):
 
     def __epoch_update__(self):
         for client in self.network.clients:
-            # client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U)
-            client.U_past = client.U
-            client.U = client.U_half - self.step_size * client.local_grad_wrt_U(client.U_half)
-            client.U_half = client.U + self.momentum * (client.U - client.U_past)
+            if self.use_momentum:
+                client.U_past = client.U
+                client.U = client.U_half - self.step_size * client.local_grad_wrt_U(client.U_half, self.l1_coef,
+                                                                                    self.l2_coef)
+                client.U_half = client.U + self.momentum * (client.U - client.U_past)
+            else:
+                client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+
