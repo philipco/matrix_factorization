@@ -10,22 +10,21 @@ from scipy.stats import ortho_group
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value_ratio: int = 0):
+                 noise: int = 0, missing_value: int = 0):
         super().__init__()
         self.nb_clients = nb_clients
         self.dim = dim
         self.plunging_dimension = plunging_dimension
         self.nb_samples = nb_samples
-
-        self.mask = self.generate_mask(missing_value_ratio)
-
+        self.mask = self.generate_mask(missing_value)
         self.clients = self.generate_network_of_clients(rank_S, noise)
         self.W = self.generate_neighborood()
         self.plot_graph_connectivity()
 
-    def generate_mask(self, missing_value_ratio):
-        return np.random.choice([0, 1], size=(self.nb_samples, self.dim),
-                                p=[missing_value_ratio, 1 - missing_value_ratio])
+    def generate_mask(self, missing_value):
+        if missing_value == 0:
+            return np.ones((self.nb_samples, self.dim))
+        return np.random.choice([0, 1], size=(self.nb_samples, self.dim), p=[missing_value, 1 - missing_value])
 
     def plot_graph_connectivity(self):
         if self.nb_clients == 1:
@@ -54,6 +53,7 @@ class Network:
         return W
 
     def generate_network_of_clients(self, rank_S: int, noise: int = 0):
+        np.random.seed(1234)
         clients = []
         V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
@@ -109,15 +109,37 @@ class Client:
     def loss(self):
         return np.linalg.norm(self.S - self.U @ self.V.T, ord='fro') ** 2 / 2
 
+    def loss_mask(self):
+        return np.linalg.norm(self.mask * (self.S - self.U @ self.V.T), ord='fro') ** 2 / 2
+
     def loss_star(self):
         return np.linalg.norm(self.S_star - self.U @ self.V.T, ord='fro') ** 2 / 2
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable U."""
+        if not self.mask.all():
+            grad = []
+            for i in range(self.nb_samples):
+                grad_i = np.zeros(self.plunging_dimension)
+                for j in range(self.dim):
+                    if self.mask[i,j]:
+                        grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
+                grad.append(-grad_i)
+            return np.array(grad) + l1_coef * np.sign(U) + l2_coef * (U - self.U_0)
         return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * (U - self.U_0)
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""
+        # If there is a missing values, then the gradient is more complex.
+        if not self.mask.all():
+            grad = []
+            for j in range(self.dim):
+                grad_j = np.zeros(self.plunging_dimension)
+                for i in range(self.nb_samples):
+                    if self.mask[i, j]:
+                        grad_j += (self.S[i, j] - self.U[i] @ self.V[j].T) * self.U[i]
+                grad.append(-grad_j)
+            return np.array(grad) + l1_coef * np.sign(V) + l2_coef * (V - self.V_0)
         return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * (V - self.V_0)
 
     def set_U(self, U):

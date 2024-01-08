@@ -17,31 +17,32 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 2500
+NB_EPOCHS = 200
 NB_CLIENTS = 1
-L1_COEF = 10**-6
+L1_COEF = 0
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
+    network = Network(NB_CLIENTS, 100, 100, 5, 5, missing_value=0.5)
 
-    network = Network(NB_CLIENTS, 100, 1000, 5, 5)
-
-    optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
+    optimizations = {"V": GD_ON_V, "U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["SMART"]  #, "BI_SMART", "ORTHO"]
+    inits = ["SMART", "BI_SMART", "ORTHO"]
 
     # RANDOM initialization for optimization on U,V
-    algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")
-    errors["UV"]["RANDOM"] = algo.gradient_descent()
-    print(f"RANDOM\terror min:", errors["UV"]["RANDOM"][-1])
+    # algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")
+    # errors["UV"]["RANDOM"] = algo.gradient_descent()
+    # print(f"RANDOM\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
         print(f"=== {key} ===")
         for init in inits:
+            print(f"\t== {init} ==")
             algo = optimizations[key](network, NB_EPOCHS, 0.01, init)
             errors[key][init] = algo.gradient_descent()
+            # error_exact = algo.exact_solution()
             print(f"{init}\terror min:", errors[key][init][-1])
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -51,7 +52,7 @@ if __name__ == '__main__':
 
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
-    axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
+    # axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
     for key in optimizations.keys():
         for init in inits:
             axs.plot(np.log10(errors[key][init]), color=optim_colors[key], linestyle=init_linestyle[init])
@@ -71,9 +72,8 @@ if __name__ == '__main__':
     axs.add_artist(l1)
     axs.add_artist(l2)
 
-    # axs.plot([np.log10(np.exp(- 2 * i * step_size * svd(result_params[0][0])[1][-1])) for i in range(len(error_S_star))], label="th. ")
     axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
 
-    plt.savefig(f"convergence_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
+    plt.savefig(f"../pictures/convergence_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
 
