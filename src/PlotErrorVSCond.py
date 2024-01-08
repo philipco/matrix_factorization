@@ -18,13 +18,13 @@ matplotlib.rcParams.update({
 })
 
 NB_EPOCHS = 2000
-NB_CLIENTS = 5
+NB_CLIENTS = 1
 
 USE_MOMENTUM = False
 L1_COEF = 0
 L2_COEF = 0
 
-NB_RUNS = 50
+NB_RUNS = 30
 
 FONTSIZE=9
 
@@ -33,8 +33,7 @@ if __name__ == '__main__':
 
     network = Network(NB_CLIENTS, 100, 100, 5, 5)
 
-    # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
-    optim = GD_ON_V
+    optim = GD_ON_U
     errors = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     sigma_min = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     cond = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
@@ -79,7 +78,7 @@ if __name__ == '__main__':
     axs.add_artist(l2)
     axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V_0})$", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_sigma_N{network.nb_clients}_r{network.plunging_dimension}"
+    title = f"../pictures/convergence_vs_sigma_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
@@ -107,7 +106,7 @@ if __name__ == '__main__':
     l2 = axs.legend(handles=init_legend, loc='center right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_cond_N{network.nb_clients}_r{network.plunging_dimension}"
+    title = f"../pictures/convergence_vs_cond_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
@@ -122,7 +121,7 @@ if __name__ == '__main__':
     plt.xlabel('Value')
     plt.ylabel('Frequency')
     plt.grid(True)
-    title = f"../pictures/hist_N{network.nb_clients}_r{network.plunging_dimension}"
+    title = f"../pictures/hist_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
