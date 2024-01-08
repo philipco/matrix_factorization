@@ -41,6 +41,8 @@ class Network:
     def generate_neighborood(self, type: int = "REGULAR"):
         if self.nb_clients == 1:
             return np.array([[1]])
+        if self.nb_clients == 2:
+            return np.array([[0.5, 0.5], [0.5, 0.5]])
         if type == "REGULAR":
             W = nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
         elif type == "ERDOS":
@@ -95,7 +97,7 @@ class Client:
             self.S = self.S_star
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
-        self.V, self.V_past = None, None
+        self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
         self.mask = mask
 
     def reset_eig(self, eigs):
@@ -116,7 +118,7 @@ class Client:
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""
-        return (self.U @ V - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * (V - self.V_0)
+        return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * (V - self.V_0)
 
     def set_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
@@ -126,4 +128,4 @@ class Client:
     def set_V(self, V):
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
-        self.V, self.V_past = V, V
+        self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
