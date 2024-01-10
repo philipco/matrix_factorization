@@ -17,7 +17,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 2000
+NB_EPOCHS = 1000
 NB_CLIENTS = 1
 
 NB_RUNS = 30
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     network = Network(NB_CLIENTS, 100, 100, 5, 5)
 
     # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
-    optim = GD_ON_U
+    optim = GD_ON_V
     step_size_factors = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
     errors = {}

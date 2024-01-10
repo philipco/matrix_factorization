@@ -4,6 +4,7 @@ Created by Constantin Philippenko, 11th December 2023.
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
+from scipy.sparse.linalg import svds
 
 from src.Client import Network
 from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
@@ -17,7 +18,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 2000
+NB_EPOCHS = 1000
 NB_CLIENTS = 1
 
 NB_RUNS = 30
@@ -25,6 +26,7 @@ NB_RUNS = 30
 USE_MOMENTUM = False
 L1_COEF = 0
 L2_COEF = 0
+NOISE = 0
 
 FONTSIZE=9
 
@@ -46,7 +48,7 @@ if __name__ == '__main__':
         print(f"=== {init} ===")
         for r in overparametrization:
             print(f"=== C = {r}")
-            network = Network(NB_CLIENTS, 100, 100, 5, plunging_dimension = 5 + r)
+            network = Network(NB_CLIENTS, 100, 100, 5, plunging_dimension = 5 + r, noise=NOISE)
             sigma = []
             error = []
             for k in range(NB_RUNS):
@@ -56,8 +58,23 @@ if __name__ == '__main__':
                 cond[r].append(algo.sigma_min/algo.sigma_max)
 
 
-    COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
+    COLORS = ["tab:red", "tab:green", "tab:blue", "tab:orange", "tab:purple", "tab:brown", "tab:cyan"]
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
+    x = sorted(cond[overparametrization[0]])
+    error_at_optimal_solution = algo.compute_exact_solution(L1_COEF, L2_COEF)
+    error_optimal = np.mean(
+        [np.linalg.norm(client.S - client.S_star, ord='fro') ** 2 / 2 for client in network.clients])
+    y = [np.log10(error_at_optimal_solution) for i in x]
+    if error_optimal != 0:
+        z = [np.log10(error_optimal) for i in x]
+    if USE_MOMENTUM:
+        axs.plot(np.array(x) ** 1, y, color=COLORS[0], lw=3)
+        if error_optimal != 0:
+            axs.plot(np.array(x) ** 1, z, color=COLORS[1], lw=3)
+    else:
+        axs.plot(np.array(x) ** 2, y, color=COLORS[0], lw=3)
+        if error_optimal != 0:
+            axs.plot(np.array(x) ** 2, z, color=COLORS[1], lw=3)
     for k in range(len(overparametrization)):
         x, y = zip(*sorted(zip(cond[overparametrization[k]], np.log10(errors[overparametrization[k]]))))
         if USE_MOMENTUM:
