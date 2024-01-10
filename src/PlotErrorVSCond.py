@@ -17,7 +17,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 400
+NB_EPOCHS = 1000
 NB_CLIENTS = 1
 
 USE_MOMENTUM = False
@@ -30,10 +30,11 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
+    # network = Network(NB_CLIENTS, None, None, None, 100, noise=0,
+    #                   image_name="cameran")
+    network = Network(NB_CLIENTS, 100, 100, 5, 5, noise=0)
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=10**-5)
-
-    optim = GD_ON_U
+    optim = GD_ON_V
     errors = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     sigma_min = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     cond = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
@@ -87,7 +88,7 @@ if __name__ == '__main__':
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
     x = sorted(cond["SMART"])
-    error_at_optimal_solution = algo.compute_exact_solution()
+    error_at_optimal_solution = algo.compute_exact_solution(L1_COEF, L2_COEF)
     error_optimal = np.mean([np.linalg.norm(client.S - client.S_star, ord='fro') ** 2 / 2 for client in network.clients])
     y = [np.log10(error_at_optimal_solution) for i in x]
     if error_optimal != 0:
@@ -114,9 +115,9 @@ if __name__ == '__main__':
     init_legend = init_legend = [Line2D([0], [0], linestyle="-", color=init_colors["SMART"], lw=2, label='smart init'),
                    Line2D([0], [0], linestyle="--", color=init_colors["BI_SMART"], lw=2, label='bismart init'),
                    Line2D([0], [0], linestyle=":", color=init_colors["ORTHO"], lw=2, label='ortho'),
-                   Line2D([0], [0], linestyle="-", color=COLORS[3], lw=3, label='Error at opt. solution')]
+                   Line2D([0], [0], linestyle="-", color=COLORS[3], lw=3, label=r'$\| S - \hat{S} \|^2_F$')]
     if error_optimal != 0:
-        init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=3, label='Error at true solution'))
+        init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=3, label=r'$\| S - S_* \|^2_F$'))
 
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
