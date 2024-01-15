@@ -1,0 +1,51 @@
+"""
+Created by Constantin Philippenko, 15th January 2024.
+"""
+
+from abc import ABC, abstractmethod
+
+from src.Client import Network
+
+
+class AbstractAlgorithm(ABC):
+
+    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str) -> None:
+        self.network = network
+        self.init_type = init_type
+        self.nb_clients = network.nb_clients
+        self.nb_epoch = nb_epoch
+        self.rho = rho
+
+        # STEP-SIZE
+        self.__initialization__()
+
+        # REGULARIZATION
+        self.l1_coef = 0
+        self.l2_coef = 0
+
+    @abstractmethod
+    def name(self):
+        pass
+
+    @abstractmethod
+    def variable_optimization(self):
+        pass
+
+    @abstractmethod
+    def __initialization__(self):
+        pass
+
+    @abstractmethod
+    def __epoch_update__(self):
+        pass
+
+    def __F__(self):
+        return np.mean([client.loss(self.l1_coef, self.l2_coef) for client in self.network.clients])
+
+    def run(self):
+        error = [self.__F__()]
+
+        for i in range(self.nb_epoch):
+            self.__epoch_update__()
+            error.append(self.__F__())
+        return error
