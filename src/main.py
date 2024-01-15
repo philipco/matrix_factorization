@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import AlternateGD, GD_ON_U, GD_ON_V
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -17,7 +17,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 200
+NB_EPOCHS = 1000
 NB_CLIENTS = 1
 L1_COEF = 0
 
@@ -25,23 +25,23 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 5, missing_value=0.5)
+    network = Network(NB_CLIENTS, 100, 100, 5, 8, noise=10**-6)
 
     optimizations = {"V": GD_ON_V, "U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
     inits = ["SMART", "BI_SMART", "ORTHO"]
 
     # RANDOM initialization for optimization on U,V
-    # algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")
-    # errors["UV"]["RANDOM"] = algo.gradient_descent()
-    # print(f"RANDOM\terror min:", errors["UV"]["RANDOM"][-1])
+    algo = AlternateGD(network, NB_EPOCHS, 0.01, "EIG")
+    errors["UV"]["RANDOM"] = algo.run()
+    print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
         print(f"=== {key} ===")
         for init in inits:
             print(f"\t== {init} ==")
             algo = optimizations[key](network, NB_EPOCHS, 0.01, init)
-            errors[key][init] = algo.gradient_descent()
+            errors[key][init] = algo.run()
             # error_exact = algo.exact_solution()
             print(f"{init}\terror min:", errors[key][init][-1])
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
-    # axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
+    axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
     for key in optimizations.keys():
         for init in inits:
             axs.plot(np.log10(errors[key][init]), color=optim_colors[key], linestyle=init_linestyle[init])

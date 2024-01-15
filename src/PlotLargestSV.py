@@ -3,10 +3,9 @@ Created by Constantin Philippenko, 11th December 2023.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_V
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -45,7 +44,7 @@ if __name__ == '__main__':
             error = []
             for k in range(NB_RUNS):
                 algo = optim(network, NB_EPOCHS, 0.01, init)
-                error.append(algo.gradient_descent()[-1])
+                error.append(algo.run()[-1])
                 sigma.append(algo.sigma_min)
             sigma_min.append(sigma)
             errors.append(error)
@@ -61,6 +60,6 @@ if __name__ == '__main__':
     axs.legend(fontsize=FONTSIZE)
     axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{D_*} \mathbf{U_*}^\top \mathbf{\Phi})$", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
-    plt.savefig(f"convergence_vs_largest_sv_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
+    plt.savefig(f"../pictures/convergence_vs_largest_sv_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
 
 

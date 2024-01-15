@@ -3,10 +3,9 @@ Created by Constantin Philippenko, 11th December 2023.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -50,7 +49,7 @@ if __name__ == '__main__':
             error = []
             for k in range(NB_RUNS):
                 algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=L1_COEF, l2_coef=L2_COEF)
-                errors[ratio].append(algo.gradient_descent()[-1])
+                errors[ratio].append(algo.run()[-1])
                 sigma.append(algo.sigma_min)
                 cond[ratio].append(algo.sigma_min / algo.sigma_max)
 

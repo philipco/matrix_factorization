@@ -3,11 +3,10 @@ Created by Constantin Philippenko, 11th December 2023.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.lines import Line2D
 from scipy.sparse.linalg import svds
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -57,7 +56,7 @@ if __name__ == '__main__':
                 # algo.__descent_initialization__()
                 #
                 # algo.__compute_step_size__()
-                errors[r].append(algo.gradient_descent()[-1])
+                errors[r].append(algo.run()[-1])
                 sigma.append(algo.sigma_min)
                 cond[r].append(algo.sigma_min/algo.sigma_max)
                 if cond[r][-1]**-1 < 5:

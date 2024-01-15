@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U, GD_ON_V
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     plt.show()
     plt.imshow(network.clients[0].U @ network.clients[0].V.T)
     plt.show()
-    errors["UV"]["RANDOM"] = algo.gradient_descent()
+    errors["UV"]["RANDOM"] = algo.run()
     print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         for init in inits:
             print(f"\t== {init} ==")
             algo = optimizations[key](network, NB_EPOCHS, 0.01, init)
-            errors[key][init] = algo.gradient_descent()
+            errors[key][init] = algo.run()
             # error_exact = algo.exact_solution()
             print(f"{init}\terror min:", errors[key][init][-1])
 
