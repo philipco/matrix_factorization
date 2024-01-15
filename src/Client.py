@@ -133,6 +133,13 @@ class Client:
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable U."""
+        nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
+        if l1_coef != 0:
+            rank = np.linalg.matrix_rank(U)
+            u, s, v = np.linalg.svd(U, full_matrices=False)
+            nuclear_grad = u[:,:rank] @ v[:,:rank].T
+            if rank == 5:
+                print("yes!")
         if not self.mask.all():
             grad = []
             for i in range(self.nb_samples):
@@ -141,8 +148,8 @@ class Client:
                     if self.mask[i,j]:
                         grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
                 grad.append(-grad_i)
-            return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U
-        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * U
+            return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
+        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""
