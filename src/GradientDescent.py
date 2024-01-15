@@ -18,12 +18,8 @@ class AbstractGradientDescent(ABC):
         self.sigma_max, self.sigma_min = None, None
 
         # STEP-SIZE
-        self.largest_sv_S = self.__compute_largest_eigenvalues_dataset__()
         self.__descent_initialization__()
-        if self.sigma_max is not None:
-            self.step_size = 1 / (self.sigma_max**2)
-        else:
-            self.step_size = 1 / (self.largest_sv_S**2)
+        self.__compute_step_size__()
 
         # MOMEMTUM
         self.use_momentum = use_momentum
@@ -44,6 +40,9 @@ class AbstractGradientDescent(ABC):
     def variable_optimization(self):
         pass
 
+    def __compute_step_size__(self):
+        self.step_size = 1 / (self.sigma_max**2)
+
     def __descent_initialization__(self):
         # np.random.seed(42)
         if self.init_type == "SMART" and self.variable_optimization() != "U":
@@ -58,23 +57,18 @@ class AbstractGradientDescent(ABC):
             self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
             self.sigma_min, self.sigma_max = ortho_MF_initialization_for_GD_on_U(self.network)
+        elif self.init_type == "EIG" and self.variable_optimization() != "U":
+            self.sigma_min, self.sigma_max = eig_MF_initialization(self.network)
+        elif self.init_type == "EIG" and self.variable_optimization() == "U":
+            self.sigma_min, self.sigma_max = eig_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "RANDOM":
-            random_MF_initialization(self.network)
+            self.sigma_min, self.sigma_max = random_MF_initialization(self.network)
         else:
             raise ValueError("Unrecognized type of initialization.")
-        # self.smallest_sv = self.__compute_smallest_eigenvalues_init__()
-        self.largest_sv = self.__compute_largest_eigenvalues_init__()
 
     @abstractmethod
     def __epoch_update__(self):
         pass
-
-    def __compute_largest_eigenvalues_dataset__(self):
-        largest_sv_S = 0
-        for client in self.network.clients:
-            largest_sv_S += svds(client.S, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
-        # print("{0}, {1}:\nDataset largest singular value: {2}".format(self.name(), self.init_type, largest_sv_S))
-        return largest_sv_S
 
     def __compute_largest_eigenvalues_init__(self):
         largest_sv_U = 0
@@ -95,7 +89,29 @@ class AbstractGradientDescent(ABC):
         return (smallest_sv_U, smallest_sv_V)
 
     def __F__(self):
-        return np.mean([client.loss() for client in self.network.clients])
+        return np.mean([client.loss(self.l1_coef, self.l2_coef) for client in self.network.clients])
+
+    def compute_exact_solution(self, l1_coef, l2_coef):
+        self.__descent_initialization__()
+        error = 0
+        if self.variable_optimization() == "U":
+            V = self.network.clients[0].V  # Clients share the same V.
+            VV = V.T @ V
+            VVinv = np.linalg.inv(VV + l2_coef * np.identity((VV.shape[0])) )
+            for client in self.network.clients:
+                SV = client.S @ V
+                client.U = SV @ VVinv
+                error += client.loss(l1_coef, l2_coef) / self.nb_clients
+        else:
+            sum_S_Ui = np.sum([client.S.T @ client.U for client in self.network.clients], axis=0)
+            sum_UU = np.zeros((self.network.plunging_dimension, self.network.plunging_dimension))
+            for client in self.network.clients:
+                sum_UU += client.U.T @ client.U
+            sum_UUinv = np.linalg.inv(sum_UU + l2_coef * np.identity((self.network.plunging_dimension)))
+            for client in self.network.clients:
+                client.V = sum_S_Ui @ sum_UUinv
+            error += client.loss(l1_coef, l2_coef) / self.nb_clients
+        return error
 
     def gradient_descent(self):
         error = [self.__F__()]
@@ -139,7 +155,7 @@ class AlternateGD(AbstractGradientDescent):
         gradV = []
         Vold = []
         for client in self.network.clients:
-            client.U -= self.step_size * self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+            client.U -= self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
             gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
             Vold.append(client.V)
         for client in self.network.clients:

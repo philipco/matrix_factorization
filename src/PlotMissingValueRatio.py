@@ -17,10 +17,10 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 1000
+NB_EPOCHS = 250
 NB_CLIENTS = 1
 
-NB_RUNS = 30
+NB_RUNS = 15
 
 USE_MOMENTUM = False
 L1_COEF = 0
@@ -30,45 +30,41 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-
-    network = Network(NB_CLIENTS, 100, 100, 5, 5)
-
-    # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
-    optim = GD_ON_V
-    step_size_factors = [0.125, 0.25, 0.5, 1, 2, 4, 8]
+    optim = GD_ON_U
+    missing_value_ratio = [0, 0.25, 0.5, 0.75, 0.9, 0.95]
 
     errors = {}
     sigma_min = []
     inits = ["SMART"]
     cond = {}
-    for C in step_size_factors:
-        errors[C] = []
-        cond[C] = []
+    for ratio in missing_value_ratio:
+        errors[ratio] = []
+        cond[ratio] = []
 
     for init in inits:
         print(f"=== {init} ===")
-        for C in step_size_factors:
-            print(f"=== C = {C}")
+        for ratio in missing_value_ratio:
+            network = Network(NB_CLIENTS, 100, 100, 5, 5, missing_value=ratio)
+            print(f"=== ratio = {ratio}")
             sigma = []
             error = []
             for k in range(NB_RUNS):
                 algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=L1_COEF, l2_coef=L2_COEF)
-                algo.step_size *= C
-                errors[C].append(algo.gradient_descent()[-1])
+                errors[ratio].append(algo.gradient_descent()[-1])
                 sigma.append(algo.sigma_min)
-                cond[C].append(algo.sigma_min/algo.sigma_max)
+                cond[ratio].append(algo.sigma_min / algo.sigma_max)
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
-    for k in range(len(step_size_factors)):
-        x, y = zip(*sorted(zip(cond[step_size_factors[k]], np.log10(errors[step_size_factors[k]]))))
+    for k in range(len(missing_value_ratio)):
+        x, y = zip(*sorted(zip(cond[missing_value_ratio[k]], np.log10(errors[missing_value_ratio[k]]))))
         if USE_MOMENTUM:
-            axs.plot(np.array(x) ** 1, y, color=COLORS[k], linestyle="-", label=r"$\gamma \leftarrow \times {0}$".format(step_size_factors[k]))
+            axs.plot(np.array(x) ** 1, y, color=COLORS[k], linestyle="-", label=r"ratio m.v. $=  {0}$".format(missing_value_ratio[k]))
             axs.set_xlabel(r"$\sigma_{\mathrm{min}}(\mathbf{V_0}) / \sigma_{\mathrm{max}}(\mathbf{V_0})$",
                            fontsize=FONTSIZE)
         else:
-            axs.plot(np.array(x) ** 2, y, color=COLORS[k], linestyle="-", label=r"$\gamma \leftarrow \times {0}$".format(step_size_factors[k]))
+            axs.plot(np.array(x) ** 2, y, color=COLORS[k], linestyle="-", label=r"ratio m.v. $= {0}$".format(missing_value_ratio[k]))
             axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V_0}) / \sigma^2_{\mathrm{max}}(\mathbf{V_0})$",
                            fontsize=FONTSIZE)
 
@@ -76,7 +72,7 @@ if __name__ == '__main__':
     axs.legend(fontsize=FONTSIZE)
 
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_stepsize_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../pictures/convergence_vs_ratio_mv_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:

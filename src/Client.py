@@ -5,27 +5,43 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
+from skimage import data
 
 
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value_ratio: int = 0):
+                 noise: int = 0, missing_value: int = 0, image_name: str = None):
         super().__init__()
         self.nb_clients = nb_clients
-        self.dim = dim
-        self.plunging_dimension = plunging_dimension
-        self.nb_samples = nb_samples
+        if image_name is None:
+            self.dim = dim
+            self.plunging_dimension = plunging_dimension
+            self.nb_samples = nb_samples
+            self.mask = self.generate_mask(missing_value)
+            self.clients = self.generate_network_of_clients(rank_S, noise)
+            self.W = self.generate_neighborood()
+            self.plot_graph_connectivity()
+        elif image_name.__eq__("cameran"):
+            cameraman = data.camera()
+            self.plunging_dimension = plunging_dimension
 
-        self.mask = self.generate_mask(missing_value_ratio)
+            self.dim = cameraman.shape[1]
+            self.nb_samples = cameraman.shape[0]
+            self.mask = self.generate_mask(missing_value)
 
-        self.clients = self.generate_network_of_clients(rank_S, noise)
-        self.W = self.generate_neighborood()
-        self.plot_graph_connectivity()
+            self.clients = []
+            for c_id in range(self.nb_clients):
+                self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, cameraman, self.plunging_dimension,
+                                      self.mask, noise))
+            self.W = self.generate_neighborood()
+            self.plot_graph_connectivity()
 
-    def generate_mask(self, missing_value_ratio):
-        return np.random.choice([0, 1], size=(self.nb_samples, self.dim),
-                                p=[missing_value_ratio, 1 - missing_value_ratio])
+
+    def generate_mask(self, missing_value):
+        if missing_value == 0:
+            return np.ones((self.nb_samples, self.dim))
+        return np.random.choice([0, 1], size=(self.nb_samples, self.dim), p=[missing_value, 1 - missing_value])
 
     def plot_graph_connectivity(self):
         if self.nb_clients == 1:
@@ -41,6 +57,8 @@ class Network:
     def generate_neighborood(self, type: int = "REGULAR"):
         if self.nb_clients == 1:
             return np.array([[1]])
+        if self.nb_clients == 2:
+            return np.array([[0.5, 0.5], [0.5, 0.5]])
         if type == "REGULAR":
             W = nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
         elif type == "ERDOS":
@@ -52,6 +70,7 @@ class Network:
         return W
 
     def generate_network_of_clients(self, rank_S: int, noise: int = 0):
+        np.random.seed(1234)
         clients = []
         V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
@@ -87,16 +106,17 @@ class Client:
         self.dim = dim
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
+        self.mask = mask
         self.S_star = U_star @ D_star @ V_star.T
+        self.S = np.copy(self.S_star)
         if noise != 0:
             print("Adding some noise.")
-            self.S = self.S_star + np.random.normal(0, noise, size=(self.nb_samples, self.dim))
-        else:
-            self.S = self.S_star
+            self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
+        if not mask.all():
+            self.S *= self.mask
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
-        self.V, self.V_past = None, None
-        self.mask = mask
+        self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
 
     def reset_eig(self, eigs):
         for k in range(len(eigs)):
@@ -104,19 +124,39 @@ class Client:
             self.D_star[k, k] = eigs[k]
         self.S = self.U_star @ self.D_star @ self.V_star.T
 
-    def loss(self):
-        return np.linalg.norm(self.S - self.U @ self.V.T, ord='fro') ** 2 / 2
+    def loss(self, l1_coef, l2_coef):
+        # S is already multiplied by the mask.
+        return np.linalg.norm(self.S - self.mask * (self.U @ self.V.T), ord='fro') ** 2 / 2
 
     def loss_star(self):
-        return np.linalg.norm(self.S_star - self.U @ self.V.T, ord='fro') ** 2 / 2
+        return np.linalg.norm(self.mask * (self.S_star - self.U @ self.V.T), ord='fro') ** 2 / 2
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable U."""
-        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * (U - self.U_0)
+        if not self.mask.all():
+            grad = []
+            for i in range(self.nb_samples):
+                grad_i = np.zeros(self.plunging_dimension)
+                for j in range(self.dim):
+                    if self.mask[i,j]:
+                        grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
+                grad.append(-grad_i)
+            return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U
+        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * U
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""
-        return (self.U @ V - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * (V - self.V_0)
+        # If there is a missing values, then the gradient is more complex.
+        if not self.mask.all():
+            grad = []
+            for j in range(self.dim):
+                grad_j = np.zeros(self.plunging_dimension)
+                for i in range(self.nb_samples):
+                    if self.mask[i, j]:
+                        grad_j += (self.S[i, j] - self.U[i] @ self.V[j].T) * self.U[i]
+                grad.append(-grad_j)
+            return np.array(grad) + l1_coef * np.sign(V) + l2_coef * V
+        return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * V
 
     def set_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
@@ -126,4 +166,24 @@ class Client:
     def set_V(self, V):
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
-        self.V, self.V_past = V, V
+        self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
+
+
+class ClientRealData(Client):
+
+    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, mask,
+                 noise: int = 0) -> None:
+        self.id = id
+        self.dim = dim
+        self.nb_samples = nb_samples
+        self.plunging_dimension = plunging_dimension
+        self.mask = mask
+        self.S_star = self.S = S_star.astype(np.float64)
+        self.S = np.copy(self.S_star)
+        if noise != 0:
+            print("Adding some noise.")
+            self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
+        if not mask.all():
+            self.S *= self.mask
+        self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
+        self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None

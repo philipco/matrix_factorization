@@ -20,21 +20,28 @@ matplotlib.rcParams.update({
 NB_EPOCHS = 200
 NB_CLIENTS = 1
 L1_COEF = 0
+L2_COEF = 10
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 5, missing_value=0.5)
+    network = Network(NB_CLIENTS, None, None, None, 50, noise=0,
+                      image_name="cameran")
 
-    optimizations = {"V": GD_ON_V, "U": GD_ON_U}
+    optimizations = {"U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["SMART", "BI_SMART", "ORTHO"]
+    inits = ["SMART"]
 
     # RANDOM initialization for optimization on U,V
-    # algo = AlternateGD(network, NB_EPOCHS, 0.01, "RANDOM")
-    # errors["UV"]["RANDOM"] = algo.gradient_descent()
-    # print(f"RANDOM\terror min:", errors["UV"]["RANDOM"][-1])
+    algo = GD_ON_V(network, NB_EPOCHS, 0.01, "SMART")
+    algo.compute_exact_solution(L1_COEF, L2_COEF)
+    plt.imshow(network.clients[0].S)
+    plt.show()
+    plt.imshow(network.clients[0].U @ network.clients[0].V.T)
+    plt.show()
+    errors["UV"]["RANDOM"] = algo.gradient_descent()
+    print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
         print(f"=== {key} ===")
@@ -52,7 +59,7 @@ if __name__ == '__main__':
 
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
-    # axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
+    axs.plot(np.log10(errors["UV"]["RANDOM"]), color=optim_colors["UV"], linestyle=init_linestyle["RANDOM"])
     for key in optimizations.keys():
         for init in inits:
             axs.plot(np.log10(errors[key][init]), color=optim_colors[key], linestyle=init_linestyle[init])
