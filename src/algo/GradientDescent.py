@@ -4,17 +4,13 @@ Created by Constantin Philippenko, 11th December 2023.
 from abc import abstractmethod
 
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
-from src.MFInitialization import *
+from src.algo.MFInitialization import *
 
 class AbstractGradientDescent(AbstractAlgorithm):
 
     def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
                  use_momentum: bool = False) -> None:
-        self.network = network
-        self.init_type = init_type
-        self.nb_clients = network.nb_clients
-        self.nb_epoch = nb_epoch
-        self.rho = rho
+        super().__init__(network, nb_epoch, rho, init_type)
 
         self.sigma_max, self.sigma_min = None, None
 
@@ -144,6 +140,7 @@ class GD(AbstractGradientDescent):
             client.V = ((1 - self.rho) * Vold[client.id]
                         + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
+        self.errors.append(self.__F__())
 
 class AlternateGD(AbstractGradientDescent):
 
@@ -164,6 +161,7 @@ class AlternateGD(AbstractGradientDescent):
             client.V = ((1 - self.rho) * Vold[client.id]
                         + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
+        self.errors.append(self.__F__())
 
 class GD_ON_V(AbstractGradientDescent):
 
@@ -183,6 +181,7 @@ class GD_ON_V(AbstractGradientDescent):
             client.V = ((1 - self.rho) * Vold[client.id]
                         + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
                         - self.step_size * gradV[client.id])
+        self.errors.append(self.__F__())
 
 
 class GD_ON_U(AbstractGradientDescent):
@@ -202,4 +201,5 @@ class GD_ON_U(AbstractGradientDescent):
                 client.U_half = client.U + self.momentum * (client.U - client.U_past)
             else:
                 client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+        self.errors.append(self.__F__())
 

@@ -7,6 +7,8 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
+from src.Test import orth
+
 
 class Network:
 
@@ -80,7 +82,7 @@ class Network:
         return clients
 
     def generate_low_rank_matrix(self, rank: int):
-        assert self.dim >= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
+        # assert self.dim >= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
         U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
         D_star = np.zeros((rank, rank))
@@ -174,6 +176,25 @@ class Client:
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
+
+    def local_power_iteration(self):
+        # We update V.
+        V = self.S.T @ self.S @ self.V / self.nb_samples
+
+        # We orthogonalize V.
+        V = orth(V)
+
+        # We compute eigenvalues using V.
+        # D = np.eye(self.plunging_dimension, self.plunging_dimension)
+        # for i in range(self.plunging_dimension):
+        #     D[i, i] = np.linalg.norm(self.S @ V[:, i])
+
+        # We compute U.
+        U = np.array([self.S @ V[:, i] for i in range(self.plunging_dimension)]).T
+
+        self.set_U(U)
+        self.set_V(V)
+        return V
 
 
 class ClientRealData(Client):

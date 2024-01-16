@@ -17,15 +17,26 @@ def generate_gaussian_matrix(n, d, std=1):
     gaussian_matrix = np.random.normal(0, std, size=(n, d))
     return gaussian_matrix
 
+def random_power_iteration(network: Network):
+    plunging_dimension = network.plunging_dimension
+    for client in network.clients:
+        client.set_U(generate_gaussian_matrix(network.nb_samples, plunging_dimension, 1))
+        client.set_V(generate_gaussian_matrix(network.dim, plunging_dimension, 1))
+    S = np.concatenate([client.U @ client.V.T for client in network.clients])
+    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_eigenvalues[-1]
+    print(f"===> kappa: {sigma_max / sigma_min}")
+    return sigma_min, sigma_max
 
 def random_MF_initialization(network: Network):
     """Implementation of Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
     Neurips 2021"""
     plunging_dimension = network.plunging_dimension
     S = np.concatenate([client.S for client in network.clients])
-    smallest_eigenvalues = svds(S, k=network.plunging_dimension - 1, which='SM')[1]
-    sigma_min = np.min(smallest_eigenvalues[np.nonzero(smallest_eigenvalues)])  # smallest non-zero eigenvalue
-    sigma_max = svds(S, k=1, which='LM')[1][0]
+    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_eigenvalues[-1]
     std = sigma_min / (np.sqrt(sigma_max * plunging_dimension **3 ) * (network.dim + network.nb_samples))
     for client in network.clients:
         client.set_U(generate_gaussian_matrix(network.nb_samples, plunging_dimension, std))

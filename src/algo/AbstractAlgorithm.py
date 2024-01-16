@@ -4,6 +4,8 @@ Created by Constantin Philippenko, 15th January 2024.
 
 from abc import ABC, abstractmethod
 
+import numpy as np
+
 from src.Client import Network
 
 
@@ -16,6 +18,8 @@ class AbstractAlgorithm(ABC):
         self.nb_epoch = nb_epoch
         self.rho = rho
 
+        self.errors = []
+
         # STEP-SIZE
         self.__initialization__()
 
@@ -25,10 +29,6 @@ class AbstractAlgorithm(ABC):
 
     @abstractmethod
     def name(self):
-        pass
-
-    @abstractmethod
-    def variable_optimization(self):
         pass
 
     @abstractmethod
@@ -43,9 +43,7 @@ class AbstractAlgorithm(ABC):
         return np.mean([client.loss(self.l1_coef, self.l2_coef) for client in self.network.clients])
 
     def run(self):
-        error = [self.__F__()]
-
+        self.errors.append(self.__F__())
         for i in range(self.nb_epoch):
             self.__epoch_update__()
-            error.append(self.__F__())
-        return error
+        return self.errors
