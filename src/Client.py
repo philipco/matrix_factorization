@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.Test import orth
+from src.MatrixUtilities import orth
 
 
 class Network:
@@ -49,7 +49,7 @@ class Network:
         if self.nb_clients == 1:
             return
         # We remove the self connection to avoid loop on the graph.
-        G = nx.from_numpy_matrix(self.W - np.diag(np.diag(self.W)))
+        G = nx.from_numpy_array(self.W - np.diag(np.diag(self.W)))
         # Draw the graph
         pos = nx.spring_layout(G)  # Positions nodes using Fruchterman-Reingold force-directed algorithm
         nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=500, font_weight='bold', font_size=10)
@@ -62,9 +62,9 @@ class Network:
         if self.nb_clients == 2:
             return np.array([[0.5, 0.5], [0.5, 0.5]])
         if type == "REGULAR":
-            W = nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_array(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
         elif type == "ERDOS":
-            W = nx.to_numpy_matrix(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_array(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
         else:
             raise ValueError("Unrecognized type of connectivity graph.")
         W = np.array(W / np.sum(W, axis=1))

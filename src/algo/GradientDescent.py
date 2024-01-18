@@ -38,7 +38,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         pass
 
     def __compute_step_size__(self):
-        self.step_size = 0.1 / (self.sigma_max**2)
+        self.step_size = 1 / (self.sigma_max**2)
 
     def __initialization__(self):
         # np.random.seed(42)

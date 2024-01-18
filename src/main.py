@@ -20,7 +20,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 50
+NB_EPOCHS = 1000
 NB_CLIENTS = 10
 L1_COEF = 0
 
@@ -28,7 +28,7 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 8, noise=0)
+    network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=0)
 
     optimizations = {"V": GD_ON_V, "U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}

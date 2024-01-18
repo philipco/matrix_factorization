@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     # network = Network(NB_CLIENTS, None, None, None, 100, noise=0,
     #                   image_name="cameran")
-    network = Network(NB_CLIENTS, 10, 100, 5, 5, noise=NOISE)
+    network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=NOISE)
 
     optim = GD_ON_U
     errors = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
