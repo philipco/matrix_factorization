@@ -4,6 +4,7 @@ from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
 from src.Client import Network
+from src.Test import orth
 
 SINGULARVALUE_CLIP = 0
 
@@ -113,6 +114,47 @@ def bi_smart_MF_initialization_for_GD_on_U(network: Network):
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
+
+def power_MF_initialization(network: Network, nb_power: int):
+    U = []
+    # When initialization U in the span of S, Phi is shared by all clients.
+    for client in network.clients:
+        U0 = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
+        for k in range(nb_power):
+            U0 = client.S @ client.S.T @ U0 / client.dim
+            U0 = orth(U0)
+        client.set_U(U0)
+        U.append(U0)
+        V = np.array([client.S.T @ U0[:, i] for i in range(network.plunging_dimension)]).T
+        client.set_V(V)
+    U = np.concatenate(U)
+    smallest_eigenvalues = svds(U, k=network.plunging_dimension - 1, which='SM')[1]
+    sigma_min = np.min(smallest_eigenvalues[np.nonzero(smallest_eigenvalues)])  # smallest non-zero eigenvalue
+    sigma_max = svds(U, k=1, which='LM')[1][0]
+    print(f"===> kappa: {sigma_max / sigma_min}")
+    return sigma_min, sigma_max
+
+
+def power_MF_initialization_for_GD_on_U(network: Network, nb_power: int):
+    # assert nb_power >= 1, "There must be at least one power iteration."
+    V = np.zeros((network.dim, network.plunging_dimension))
+    for client in network.clients:
+        V0 = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
+        for k in range(nb_power):
+            V0 = client.S.T @ client.S @ V0 / client.nb_samples
+            V0 = orth(V0)
+        V += V0
+    key_matrix_for_condition_number = np.copy(V)
+    V = orth(V)
+    for client in network.clients:
+        U = np.array([client.S @ V[:, i] for i in range(network.plunging_dimension)]).T
+        client.set_U(U)
+        client.set_V(V)
+    smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
+    sigma_min = np.min(smallest_eigenvalues[np.nonzero(smallest_eigenvalues)])  # smallest non-zero eigenvalue
+    sigma_max = svds(key_matrix_for_condition_number, k=1, which='LM')[1][0]
+    print(f"===> kappa: {sigma_max / sigma_min}")
+    return sigma_min, sigma_max
 
 def ortho_MF_initialization(network: Network):
     U = []

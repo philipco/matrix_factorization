@@ -38,7 +38,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         pass
 
     def __compute_step_size__(self):
-        self.step_size = 1 / (self.sigma_max**2)
+        self.step_size = 0.1 / (self.sigma_max**2)
 
     def __initialization__(self):
         # np.random.seed(42)
@@ -50,6 +50,10 @@ class AbstractGradientDescent(AbstractAlgorithm):
             self.sigma_min, self.sigma_max = bi_smart_MF_initialization(self.network)
         elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
             self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network)
+        elif self.init_type == "POWER" and self.variable_optimization() != "U":
+            self.sigma_min, self.sigma_max = power_MF_initialization(self.network, 1)
+        elif self.init_type == "POWER" and self.variable_optimization() == "U":
+            self.sigma_min, self.sigma_max = power_MF_initialization_for_GD_on_U(self.network, 1)
         elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
             self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
@@ -203,3 +207,25 @@ class GD_ON_U(AbstractGradientDescent):
                 client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
         self.errors.append(self.__F__())
 
+
+class DGDLocal(AbstractGradientDescent):
+
+    def name(self):
+        return "DGD+Local"
+
+    def variable_optimization(self):
+        return "U,V"
+
+    def __epoch_update__(self):
+        gradV = []
+        Vold = []
+        for client in self.network.clients:
+            gradU = self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
+            client.U -= self.step_size * gradU
+            Vold.append(client.V)
+        for client in self.network.clients:
+            client.V = ((1 - self.rho) * Vold[client.id]
+                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
+                        - self.step_size * gradV[client.id])
+        self.errors.append(self.__F__())
