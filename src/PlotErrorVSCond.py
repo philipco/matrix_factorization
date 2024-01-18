@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.GradientDescent import GD, AlternateGD, GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U, GD_ON_V
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -18,11 +18,13 @@ matplotlib.rcParams.update({
 })
 
 NB_EPOCHS = 1000
-NB_CLIENTS = 1
+NB_CLIENTS = 10
 
 USE_MOMENTUM = False
-L1_COEF = 0
-L2_COEF = 0
+L1_COEF = 0*10**-3
+L2_COEF = 0*10**-9
+
+NOISE = 0*10**-5
 
 NB_RUNS = 30
 
@@ -32,10 +34,11 @@ if __name__ == '__main__':
 
     # network = Network(NB_CLIENTS, None, None, None, 100, noise=0,
     #                   image_name="cameran")
-    network = Network(NB_CLIENTS, 100, 100, 5, 5, noise=0)
+    network = Network(NB_CLIENTS, 10, 100, 5, 5, noise=NOISE)
 
-    optim = GD_ON_V
+    optim = GD_ON_U
     errors = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
+    error_at_optimal_solution = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     sigma_min = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     cond = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
     inits = ["SMART", "BI_SMART", "ORTHO"]
@@ -49,9 +52,10 @@ if __name__ == '__main__':
         for k in range(NB_RUNS):
 
             algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=L1_COEF, l2_coef=L2_COEF)
-            errors[init].append(algo.gradient_descent()[-1])
+            errors[init].append(algo.run()[-1])
             sigma_min[init].append(algo.sigma_min)
             cond[init].append(algo.sigma_min/algo.sigma_max)
+            error_at_optimal_solution[init].append(algo.compute_exact_solution(L1_COEF, L2_COEF))
 
             if optim == GD_ON_U:
                 vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
@@ -61,7 +65,7 @@ if __name__ == '__main__':
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
-    init_linestyle = {"SMART": "-", "BI_SMART": "--", "ORTHO": ":"}
+    init_linestyle = {"SMART": "-.", "BI_SMART": "--", "ORTHO": ":"}
     init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4]}
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
@@ -77,7 +81,9 @@ if __name__ == '__main__':
     axs.add_artist(l2)
     axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V_0})$", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_sigma_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../pictures/convergence_vs_sigma_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE != 0:
+        title += f"_eps{NOISE}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
@@ -87,21 +93,13 @@ if __name__ == '__main__':
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
-    x = sorted(cond["SMART"])
-    error_at_optimal_solution = algo.compute_exact_solution(L1_COEF, L2_COEF)
     error_optimal = np.mean([np.linalg.norm(client.S - client.S_star, ord='fro') ** 2 / 2 for client in network.clients])
-    y = [np.log10(error_at_optimal_solution) for i in x]
-    if error_optimal != 0:
-        z = [np.log10(error_optimal) for i in x]
-    if USE_MOMENTUM:
-        axs.plot(np.array(x) ** 1, y, color=COLORS[3], lw=3)
-        if error_optimal != 0:
-            axs.plot(np.array(x) ** 1, z, color=COLORS[2], lw=3)
-    else:
-        axs.plot(np.array(x) ** 2, y, color=COLORS[3], lw=3)
-        if error_optimal != 0:
-            axs.plot(np.array(x) ** 2, z, color=COLORS[2], lw=3)
     for init in inits:
+        x, y = zip(*sorted(zip(cond[init], np.log10(error_at_optimal_solution[init]))))
+        if USE_MOMENTUM:
+            axs.plot(np.array(x) ** 1, y, color=init_colors[init], lw=1)
+        else:
+            axs.plot(np.array(x) ** 2, y, color=init_colors[init], lw=1)
         x, y = zip(*sorted(zip(cond[init], np.log10(errors[init]))))
         if USE_MOMENTUM:
             axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=init_linestyle[init])
@@ -112,17 +110,26 @@ if __name__ == '__main__':
             axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V_0}) / \sigma^2_{\mathrm{max}}(\mathbf{V_0})$",
                            fontsize=FONTSIZE)
 
-    init_legend = init_legend = [Line2D([0], [0], linestyle="-", color=init_colors["SMART"], lw=2, label='smart init'),
+    if error_optimal != 0:
+        z = [np.log10(error_optimal) for i in x]
+        if USE_MOMENTUM:
+            axs.plot(np.array(x) ** 1, z, color=COLORS[2], lw=3)
+        else:
+            axs.plot(np.array(x) ** 2, z, color=COLORS[2], lw=3)
+
+    init_legend = init_legend = [Line2D([0], [0], linestyle="-.", color=init_colors["SMART"], lw=2, label='smart init'),
                    Line2D([0], [0], linestyle="--", color=init_colors["BI_SMART"], lw=2, label='bismart init'),
                    Line2D([0], [0], linestyle=":", color=init_colors["ORTHO"], lw=2, label='ortho'),
-                   Line2D([0], [0], linestyle="-", color=COLORS[3], lw=3, label=r'$\| S - \hat{S} \|^2_F$')]
+                   Line2D([0], [0], linestyle="-", color='black', lw=2, label=r'$\| S - \hat{S} \|^2_F$')]
     if error_optimal != 0:
         init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=3, label=r'$\| S - S_* \|^2_F$'))
 
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_cond_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../pictures/convergence_vs_cond_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE != 0:
+        title += f"_eps{NOISE}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
@@ -133,11 +140,15 @@ if __name__ == '__main__':
 
 
     plt.figure(figsize=(6, 4))
-    plt.hist(np.log(np.abs(vector_values)), bins=15, alpha=0.7)
+    vector_values = np.abs(vector_values)
+    vector_values[vector_values < 10**-10] = 10**-12
+    plt.hist(np.log(vector_values), bins=15, alpha=0.7)
     plt.xlabel('Value')
     plt.ylabel('Frequency')
     plt.grid(True)
-    title = f"../pictures/hist_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../pictures/hist_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE != 0:
+        title += f"_eps{NOISE}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
