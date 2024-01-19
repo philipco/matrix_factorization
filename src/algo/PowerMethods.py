@@ -1,7 +1,7 @@
 import numpy as np
 
 from src.Client import Network
-from src.Test import orth
+from src.MatrixUtilities import orth
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import random_MF_initialization, random_power_iteration
 

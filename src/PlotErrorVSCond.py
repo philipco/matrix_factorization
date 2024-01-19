@@ -24,7 +24,7 @@ USE_MOMENTUM = False
 L1_COEF = 0*10**-3
 L2_COEF = 0*10**-9
 
-NOISE = 0*10**-5
+NOISE = 10**-15
 
 NB_RUNS = 30
 
@@ -37,17 +37,20 @@ if __name__ == '__main__':
     network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=NOISE)
 
     optim = GD_ON_U
-    errors = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
-    error_at_optimal_solution = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
-    sigma_min = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
-    cond = {"RANDOM": [], "SMART": [], "BI_SMART": [], "ORTHO": []}
-    inits = ["SMART", "BI_SMART", "ORTHO"]
+
+    labels = {"SMART": 'bismart', "BI_SMART": 'bismart', "ORTHO": "ortho", "POWER": 'power'}
+
+    inits = ["SMART", "BI_SMART", "ORTHO", "POWER"]
+    errors = {name: [] for name in inits}
+    error_at_optimal_solution = {name: [] for name in inits}
+    cond = {name: [] for name in inits}
+    sigma_min = {name: [] for name in inits}
 
     momentum = [True, False]
 
     for init in inits:
         print(f"=== {init} ===")
-        
+
         vector_values = np.array([]) # To evaluate sparsity.
         for k in range(NB_RUNS):
 
@@ -65,17 +68,16 @@ if __name__ == '__main__':
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
-    init_linestyle = {"SMART": "-.", "BI_SMART": "--", "ORTHO": ":"}
-    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4]}
+    init_linestyle = {"SMART": "-.", "BI_SMART": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1))}
+    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
     for init in inits:
         x, y = zip(*sorted(zip(sigma_min[init], np.log10(errors[init]))))
         axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=init_linestyle[init])
 
-    init_legend = [Line2D([0], [0], linestyle="-", color=init_colors["SMART"], lw=2, label='smart init'),
-                   Line2D([0], [0], linestyle="--", color=init_colors["BI_SMART"], lw=2, label='bismart init'),
-                   Line2D([0], [0], linestyle=":", color=init_colors["ORTHO"], lw=2, label='ortho')]
+    init_legend = [Line2D([0], [0], color=init_colors[init], linestyle=init_linestyle[init],
+                          lw=2, label=labels[init]) for init in inits]
 
     l2 = axs.legend(handles=init_legend, loc='center right', fontsize=FONTSIZE)
     axs.add_artist(l2)

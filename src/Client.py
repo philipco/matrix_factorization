@@ -167,15 +167,22 @@ class Client:
             return np.array(grad) + l1_coef * np.sign(V) + l2_coef * V
         return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * V
 
-    def set_U(self, U):
+    def set_initial_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = U, U, U, U, U
 
-    def set_V(self, V):
+    def set_U(self, U):
+        assert U.shape == (self.nb_samples, self.plunging_dimension), \
+            f"U has not the correct size on client {self.id}"
+        self.U = U
+
+    def set_initial_V(self, V):
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
+    def set_V(self, V):
+        self.V = V
 
     def local_power_iteration(self):
         # We update V.
