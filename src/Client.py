@@ -181,6 +181,7 @@ class Client:
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
+
     def set_V(self, V):
         self.V = V
 
@@ -190,11 +191,6 @@ class Client:
 
         # We orthogonalize V.
         V = orth(V)
-
-        # We compute eigenvalues using V.
-        # D = np.eye(self.plunging_dimension, self.plunging_dimension)
-        # for i in range(self.plunging_dimension):
-        #     D[i, i] = np.linalg.norm(self.S @ V[:, i])
 
         # We compute U.
         U = np.array([self.S @ V[:, i] for i in range(self.plunging_dimension)]).T

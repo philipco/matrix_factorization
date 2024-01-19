@@ -141,13 +141,13 @@ def power_MF_initialization_for_GD_on_U(network: Network, nb_power: int):
     for client in network.clients:
         V0 = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
         for k in range(nb_power):
-            V0 = client.S.T @ client.S @ V0 / client.nb_samples
+            V0 = client.S.T @ client.S @ V0
             V0 = orth(V0)
         V += V0
     key_matrix_for_condition_number = np.copy(V)
     V = orth(V)
     for client in network.clients:
-        U = np.array([client.S @ V[:, i] for i in range(network.plunging_dimension)]).T
+        U = client.S @ V
         client.set_initial_U(U)
         client.set_initial_V(V)
     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
