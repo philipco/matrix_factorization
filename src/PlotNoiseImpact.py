@@ -27,17 +27,12 @@ NB_CLIENTS = 10
 
 USE_MOMENTUM = False
 
-L1_COEF = 0
-L2_COEF = 0
-range_noise = [10**-15, 10**-12, 10**-9, 10**-6, 10**-3, 10**-2]
+range_noise = [10**-18, 10**-15, 10**-12, 10**-9, 10**-6, 10**-3, 10**-2]
 
 FONTSIZE = 9
 
-if __name__ == '__main__':
 
-    # network = Network(NB_CLIENTS, None, None, None, 100, noise=0,
-    #                   image_name="cameran")
-
+def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, l1_coef: int, l2_coef: int):
 
     inits = ["SMART", "BI_SMART", "ORTHO", "POWER"]
     labels = {"SMART": 'smart', "BI_SMART": 'bismart', "ORTHO": "ortho", "POWER": 'power', "LocalPower": 'LocalPower'}
@@ -55,17 +50,17 @@ if __name__ == '__main__':
     vector_values = np.array([])  # To evaluate sparsity.
     for e in range_noise:
         print(f"=== noise = {e} ===")
-        network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=e)
+        network = Network(nb_clients, nb_samples, dim, rank_S, latent_dim, noise=e)
 
         for init in inits:
             kappa = np.inf
             print(f"\t== {init} ==")
             while kappa >= 5:
-                algo_GD = optim_GD(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=L1_COEF, l2_coef=L2_COEF)
+                algo_GD = optim_GD(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef, l2_coef=l2_coef)
                 kappa = algo_GD.sigma_max / algo_GD.sigma_min
             errors[init].append(algo_GD.run()[-1])
             cond[init].append(algo_GD.sigma_min / algo_GD.sigma_max)
-            error_at_optimal_solution[init].append(algo_GD.compute_exact_solution(L1_COEF, L2_COEF))
+            error_at_optimal_solution[init].append(algo_GD.compute_exact_solution(l1_coef, l2_coef))
         for optim in related_work:
             kappa = np.inf
             algo = optim(network, NB_EPOCHS // NB_LOCAL_EPOCHS, 0.01, "RANDOM", NB_LOCAL_EPOCHS)
@@ -128,12 +123,16 @@ if __name__ == '__main__':
     axs.indicate_inset_zoom(axins, edgecolor="black")
 
     title = f"../pictures/convergence_noise_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo_GD.variable_optimization()}"
-    if L1_COEF != 0:
-        title += f"_lasso{L1_COEF}"
-    if L2_COEF != 0:
-        title += f"_ridge{L2_COEF}"
+    if l1_coef != 0:
+        title += f"_lasso{l1_coef}"
+    if l2_coef != 0:
+        title += f"_ridge{l2_coef}"
     if USE_MOMENTUM:
         title += f"_momentum"
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
 
+if __name__ == '__main__':
+    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
+    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-6)
+    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-3)
