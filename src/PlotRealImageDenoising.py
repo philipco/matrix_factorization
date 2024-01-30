@@ -20,13 +20,13 @@ matplotlib.rcParams.update({
 NB_EPOCHS = 200
 NB_CLIENTS = 1
 L1_COEF = 0
-L2_COEF = 10
+L2_COEF = 0
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, None, None, None, 50, noise=0,
+    network = Network(NB_CLIENTS, None, None, None, 100, noise=50,
                       image_name="cameran")
 
     optimizations = {"U": GD_ON_U}
@@ -34,11 +34,16 @@ if __name__ == '__main__':
     inits = ["SMART"]
 
     # RANDOM initialization for optimization on U,V
-    algo = GD_ON_V(network, NB_EPOCHS, 0.01, "SMART")
+    algo = GD_ON_U(network, NB_EPOCHS, 0.01, "POWER")
     algo.compute_exact_solution(L1_COEF, L2_COEF)
     plt.imshow(network.clients[0].S)
     plt.show()
     plt.imshow(network.clients[0].U @ network.clients[0].V.T)
+    plt.title("Exact solution", fontsize=FONTSIZE)
+    plt.show()
+    algo.run()
+    plt.imshow(network.clients[0].U @ network.clients[0].V.T)
+    plt.title("Gradient descent", fontsize=FONTSIZE)
     plt.show()
     errors["UV"]["RANDOM"] = algo.run()
     print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
