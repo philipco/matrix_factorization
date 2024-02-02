@@ -20,17 +20,20 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 1000
+NB_EPOCHS = 20
 NB_CLIENTS = 10
 L1_COEF = 0
+L2_COEF = 0*10**-6
+
+NOISE = 0*10**-6
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=0)
+    network = Network(NB_CLIENTS, 100, 100, 5, 6, noise=NOISE)
 
-    optimizations = {"V": GD_ON_V, "U": GD_ON_U}
+    optimizations = {"U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
     inits = ["SMART", "BI_SMART", "ORTHO", "POWER"]
 
@@ -43,7 +46,7 @@ if __name__ == '__main__':
         print(f"=== {key} ===")
         for init in inits:
             print(f"\t== {init} ==")
-            algo = optimizations[key](network, NB_EPOCHS, 0.01, init)
+            algo = optimizations[key](network, NB_EPOCHS, 0.01, init, l1_coef=L1_COEF, l2_coef=L2_COEF)
             errors[key][init] = algo.run()
             # error_exact = algo.exact_solution()
             print(f"{init}\terror min:", errors[key][init][-1])
@@ -79,5 +82,12 @@ if __name__ == '__main__':
     axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
     axs.set_ylabel("Relative error", fontsize=FONTSIZE)
 
-    plt.savefig(f"../pictures/convergence_N{network.nb_clients}_r{network.plunging_dimension}.pdf", dpi=600, bbox_inches='tight')
+    title = f"../pictures/convergence_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE != 0:
+        title += f"_eps{NOISE}"
+    if algo.l1_coef != 0:
+        title += f"_lasso{algo.l1_coef}"
+    if algo.l2_coef != 0:
+        title += f"_ridge{algo.l2_coef}"
 
+    plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')

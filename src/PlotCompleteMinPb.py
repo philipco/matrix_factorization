@@ -4,14 +4,13 @@ Created by Constantin Philippenko, 11th December 2023.
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.sparse.linalg import svds
-import matplotlib.ticker as ticker
 
 from src.Client import Network
 
 import matplotlib
 
 from src.MatrixUtilities import orth
-from src.algo.MFInitialization import smart_MF_initialization, generate_gaussian_matrix
+from src.algo.MFInitialization import generate_gaussian_matrix
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -107,11 +106,11 @@ def plot_quality_complete_minimization_pb(nb_clients: int, nb_samples: int, dim:
 if __name__ == '__main__':
 
     # Without noise.
-    # plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 5, 0, 0)
-    # plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 5, 0, 10 ** -9)
-    # plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
+    plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 5, 0, 0)
+    plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 5, 0, 10 ** -9)
+    plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
     plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 0, 10 ** -9)
 
 
-    # plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 10**-9, 0)
-    # plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 10**-9, 10 ** -9)
+    plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 10**-9, 0)
+    plot_quality_complete_minimization_pb(NB_CLIENTS, 100, 100, 5, 6, 10**-9, 10 ** -9)
