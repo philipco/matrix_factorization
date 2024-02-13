@@ -8,6 +8,7 @@ from scipy.stats import ortho_group
 from skimage import data
 
 from src.MatrixUtilities import orth
+from src.Utilities.PytorchUtilities import get_mnist
 
 
 class Network:
@@ -15,8 +16,8 @@ class Network:
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
                  noise: int = 0, missing_value: int = 0, image_name: str = None):
         super().__init__()
-        self.nb_clients = nb_clients
         if image_name is None:
+            self.nb_clients = nb_clients
             self.dim = dim
             self.plunging_dimension = plunging_dimension
             self.nb_samples = nb_samples
@@ -26,6 +27,8 @@ class Network:
             self.plot_graph_connectivity()
         elif image_name.__eq__("cameran"):
             cameraman = data.camera()
+
+            self.nb_clients = 1
             self.plunging_dimension = plunging_dimension
 
             self.dim = cameraman.shape[1]
@@ -35,6 +38,22 @@ class Network:
             self.clients = []
             for c_id in range(self.nb_clients):
                 self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, cameraman, self.plunging_dimension,
+                                      self.mask, noise))
+            self.W = self.generate_neighborood()
+            self.plot_graph_connectivity()
+        elif image_name.__eq__("mnist"):
+            dataset = get_mnist(5)
+
+            self.nb_clients = len(dataset)
+            self.plunging_dimension = plunging_dimension
+
+            self.dim = dataset[0].shape[1]
+            self.nb_samples = dataset[0].shape[0]
+            self.mask = self.generate_mask(missing_value)
+
+            self.clients = []
+            for c_id in range(self.nb_clients):
+                self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, dataset[c_id], self.plunging_dimension,
                                       self.mask, noise))
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
@@ -76,12 +95,12 @@ class Network:
         clients = []
         V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
-            U_star, D_star = self.generate_low_rank_matrix(rank_S)
+            U_star, D_star = self.generate_low_rank_matrix(rank_S, c_id)
             clients.append(Client(c_id, self.dim, self.nb_samples, U_star, D_star, V_star, self.plunging_dimension,
                                   self.mask, noise))
         return clients
 
-    def generate_low_rank_matrix(self, rank: int):
+    def generate_low_rank_matrix(self, rank: int, c_id: int):
         # assert self.dim >= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
         U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
@@ -90,7 +109,7 @@ class Network:
         D_star[0, 0] = 1
         for k in range(1, rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1
+            D_star[k, k] = 1 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
 
         return U_star, D_star
 
@@ -109,7 +128,8 @@ class Client:
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
         self.mask = mask
-        self.S_star = U_star @ D_star @ V_star.T
+        rotation = ortho_group.rvs(dim=self.dim)
+        self.S_star = U_star @ D_star @ V_star.T #@ rotation
         self.S = np.copy(self.S_star)
         if noise != 0:
             print("Adding some noise.")
@@ -126,9 +146,9 @@ class Client:
             self.D_star[k, k] = eigs[k]
         self.S = self.U_star @ self.D_star @ self.V_star.T
 
-    def loss(self, l1_coef, l2_coef):
+    def loss(self, U, V, l1_coef, l2_coef):
         # S is already multiplied by the mask.
-        return np.linalg.norm(self.S - self.mask * (self.U @ self.V.T), ord='fro') ** 2 / 2
+        return np.linalg.norm(self.S - self.mask * (U @ V.T), ord='fro') ** 2 / 2 + l2_coef * np.linalg.norm(U, ord="fro")**2 / 2
 
     def loss_star(self):
         return np.linalg.norm(self.mask * (self.S_star - self.U @ self.V.T), ord='fro') ** 2 / 2
@@ -151,7 +171,7 @@ class Client:
                         grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
                 grad.append(-grad_i)
             return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
-        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
+        return (U @ self.V.T - self.S) @ self.V
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""

@@ -18,9 +18,9 @@ matplotlib.rcParams.update({
 })
 
 NB_EPOCHS = 1000
-NB_CLIENTS = 10
+NB_CLIENTS = 1
 USE_MOMENTUM = False
-NB_RUNS = 30
+NB_RUNS = 10
 
 FONTSIZE=9
 
