@@ -75,8 +75,9 @@ def smart_MF_initialization_for_GD_on_U(network: Network):
     for client in network.clients:
         client.set_initial_V(V)
     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
-    sigma_min = np.min(smallest_eigenvalues[smallest_eigenvalues > 10**-10])  # smallest non-zero eigenvalue
-    sigma_max = svds(key_matrix_for_condition_number, k=1, which='LM')[1][0]
+    sigma_min = smallest_eigenvalues[network.plunging_dimension - network.rank_S]
+    largest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='LM')[1]
+    sigma_max = largest_eigenvalues[-1]
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
@@ -111,8 +112,9 @@ def bi_smart_MF_initialization_for_GD_on_U(network: Network):
     for client in network.clients:
         client.set_initial_V(V)
     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
-    sigma_min = np.min(smallest_eigenvalues[smallest_eigenvalues > 10**-10])  # smallest non-zero eigenvalue
-    sigma_max = svds(key_matrix_for_condition_number, k=1, which='LM')[1][0]
+    sigma_min = smallest_eigenvalues[network.plunging_dimension - network.rank_S]
+    largest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='LM')[1]
+    sigma_max = largest_eigenvalues[-1]
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
@@ -151,8 +153,9 @@ def power_MF_initialization_for_GD_on_U(network: Network, nb_power: int):
         U = client.S @ V
         client.set_initial_U(U)
         client.set_initial_V(V)
+    smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
+    sigma_min = smallest_eigenvalues[network.plunging_dimension - network.rank_S]
     largest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='LM')[1]
-    sigma_min = largest_eigenvalues[0]
     sigma_max = largest_eigenvalues[-1]
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
@@ -188,8 +191,9 @@ def ortho_MF_initialization_for_GD_on_U(network: Network):
     for client in network.clients:
         client.set_initial_V(V)
     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
-    sigma_min = np.min(smallest_eigenvalues[smallest_eigenvalues > 10**-10])  # smallest non-zero eigenvalue
-    sigma_max = svds(key_matrix_for_condition_number, k=1, which='LM')[1][0]
+    sigma_min = smallest_eigenvalues[network.plunging_dimension - network.rank_S]
+    largest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='LM')[1]
+    sigma_max = largest_eigenvalues[-1]
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 

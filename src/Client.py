@@ -14,7 +14,7 @@ from src.Utilities.PytorchUtilities import get_mnist
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, image_name: str = None):
+                 noise: int = 0, missing_value: int = 0, image_name: str = None, seed=1234):
         super().__init__()
         if image_name is None:
             self.nb_clients = nb_clients
@@ -22,7 +22,8 @@ class Network:
             self.plunging_dimension = plunging_dimension
             self.nb_samples = nb_samples
             self.mask = self.generate_mask(missing_value)
-            self.clients = self.generate_network_of_clients(rank_S, noise)
+            self.rank_S = rank_S
+            self.clients = self.generate_network_of_clients(rank_S, seed, noise)
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
         elif image_name.__eq__("cameran"):
@@ -90,11 +91,12 @@ class Network:
         assert (np.sum(W, axis=1) == 1).all(), "W is not doubly stochastic."
         return W
 
-    def generate_network_of_clients(self, rank_S: int, noise: int = 0):
-        np.random.seed(1234)
+    def generate_network_of_clients(self, rank_S: int, seed, noise: int = 0):
+        np.random.seed(seed)
         clients = []
         V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
+            # V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
             U_star, D_star = self.generate_low_rank_matrix(rank_S, c_id)
             clients.append(Client(c_id, self.dim, self.nb_samples, U_star, D_star, V_star, self.plunging_dimension,
                                   self.mask, noise))
@@ -109,7 +111,7 @@ class Network:
         D_star[0, 0] = 1
         for k in range(1, rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
+            D_star[k, k] = 1 #/k**4 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
 
         return U_star, D_star
 
@@ -130,6 +132,9 @@ class Client:
         self.mask = mask
         rotation = ortho_group.rvs(dim=self.dim)
         self.S_star = U_star @ D_star @ V_star.T #@ rotation
+        Phi = np.random.normal(0, 1, size=(self.nb_samples, 5))
+        Phi_t = D_star @ U_star.T @ Phi
+        proj = Phi_t @ np.linalg.pinv(Phi_t.T @ Phi_t) @ Phi_t.T
         self.S = np.copy(self.S_star)
         if noise != 0:
             print("Adding some noise.")
@@ -139,6 +144,7 @@ class Client:
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
+        self.Phi = None
 
     def reset_eig(self, eigs):
         for k in range(len(eigs)):
