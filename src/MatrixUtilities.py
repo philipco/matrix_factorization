@@ -1,5 +1,15 @@
 import numpy as np
 
+
+def power(A, alpha):
+    Apower = np.eye(A.shape[1], A.shape[1])
+    for k in range(alpha // 2):
+        Apower = A.T @ A @ Apower
+    if alpha % 2 != 0:
+        return Apower @ A.T
+    return Apower
+
+
 def orth(A):
     """
     Gram-Schmidt orthogonalization of the columns of matrix A.

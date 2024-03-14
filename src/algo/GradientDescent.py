@@ -45,17 +45,21 @@ class AbstractGradientDescent(AbstractAlgorithm):
     def __initialization__(self):
         # np.random.seed(42)
         if self.init_type == "SMART" and self.variable_optimization() != "U":
+            self.network.power = 1
             self.sigma_min, self.sigma_max = smart_MF_initialization(self.network)
         elif self.init_type == "SMART" and self.variable_optimization() == "U":
+            self.network.power = 1
             self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "BI_SMART" and self.variable_optimization() != "U":
             self.sigma_min, self.sigma_max = bi_smart_MF_initialization(self.network)
         elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
             self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "POWER" and self.variable_optimization() != "U":
-            self.sigma_min, self.sigma_max = power_MF_initialization(self.network, 1)
+            self.network.power = 2
+            self.sigma_min, self.sigma_max = smart_MF_initialization(self.network)
         elif self.init_type == "POWER" and self.variable_optimization() == "U":
-            self.sigma_min, self.sigma_max = power_MF_initialization_for_GD_on_U(self.network, 1)
+            self.network.power = 2
+            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
             self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() == "U":
@@ -79,7 +83,6 @@ class AbstractGradientDescent(AbstractAlgorithm):
         for client in self.network.clients:
             largest_sv_U += svds(client.U, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
             largest_sv_V += svds(client.V, k=self.network.plunging_dimension - 1, which='LM')[1][-1]
-        # print("Largest singular value: ({0}, {1})".format(largest_sv_U, largest_sv_V))
         return (largest_sv_U, largest_sv_V)
 
     def __compute_smallest_eigenvalues_init__(self):
@@ -94,7 +97,6 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
 
     def compute_exact_solution(self, l1_coef, l2_coef):
-        # self.__descent_initialization__()
         error = 0
         if self.variable_optimization() == "U":
             V = self.network.clients[0].V_0  # Clients share the same V.
@@ -106,7 +108,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
             for client in self.network.clients:
                 SV = client.S @ V
                 client.U = SV @ VVinv
-                error += client.loss(client.U, client.V, l1_coef, l2_coef) / self.nb_clients
+                error += client.loss(client.U, client.V, l1_coef, l2_coef)
         else:
             sum_S_Ui = np.sum([client.S.T @ client.U_0 for client in self.network.clients], axis=0)
             sum_UU = np.zeros((self.network.plunging_dimension, self.network.plunging_dimension))
@@ -118,8 +120,8 @@ class AbstractGradientDescent(AbstractAlgorithm):
                 return 10
             for client in self.network.clients:
                 client.V = sum_S_Ui @ sum_UUinv
-            error += client.loss(client.U, client.V, l1_coef, l2_coef) / self.nb_clients
-        return error #, sigma_min / sigma_max
+            error += client.loss(client.U, client.V, l1_coef, l2_coef)
+        return error
 
 
 class GD(AbstractGradientDescent):

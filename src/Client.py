@@ -111,7 +111,7 @@ class Network:
         D_star[0, 0] = 1
         for k in range(1, rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1 #/k**4 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
+            D_star[k, k] = 1  #/k**4 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
 
         return U_star, D_star
 
@@ -132,9 +132,6 @@ class Client:
         self.mask = mask
         rotation = ortho_group.rvs(dim=self.dim)
         self.S_star = U_star @ D_star @ V_star.T #@ rotation
-        Phi = np.random.normal(0, 1, size=(self.nb_samples, 5))
-        Phi_t = D_star @ U_star.T @ Phi
-        proj = Phi_t @ np.linalg.pinv(Phi_t.T @ Phi_t) @ Phi_t.T
         self.S = np.copy(self.S_star)
         if noise != 0:
             print("Adding some noise.")
@@ -144,7 +141,7 @@ class Client:
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
-        self.Phi = None
+        self.Phi_V = None
 
     def reset_eig(self, eigs):
         for k in range(len(eigs)):

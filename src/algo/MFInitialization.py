@@ -4,7 +4,7 @@ from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
 from src.Client import Network
-from src.MatrixUtilities import orth
+from src.MatrixUtilities import orth, power
 
 SINGULARVALUE_CLIP = 0
 
@@ -64,9 +64,17 @@ def smart_MF_initialization(network: Network):
 
 def smart_MF_initialization_for_GD_on_U(network: Network):
     V = np.zeros((network.dim, network.plunging_dimension))
+    if network.power % 2 == 0:
+        Phi_V = generate_gaussian_matrix(network.dim, network.plunging_dimension,1)
     for client in network.clients:
-        Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
-        V += client.S.T @ Phi_V
+
+        Spower = power(client.S, network.power)
+        if network.power % 2 != 0:
+            client.Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
+        else:
+            client.Phi_V = Phi_V
+
+        V += Spower @ client.Phi_V
         Phi_U = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1 / np.sqrt(network.nb_samples))
         client.set_initial_U(Phi_U)
 
@@ -101,9 +109,10 @@ def bi_smart_MF_initialization(network: Network):
 
 def bi_smart_MF_initialization_for_GD_on_U(network: Network):
     V = np.zeros((network.dim, network.plunging_dimension))
+
     for client in network.clients:
-        Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
-        V += client.S.T @ Phi_V
+        client.Phi_V = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
+        V += client.S.T @ client.Phi_V
         Phi_U = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / np.sqrt(network.nb_samples))
         client.set_initial_U(client.S @ Phi_U)
 
@@ -142,10 +151,10 @@ def power_MF_initialization(network: Network, nb_power: int):
 def power_MF_initialization_for_GD_on_U(network: Network, nb_power: int):
     # assert nb_power >= 1, "There must be at least one power iteration."
     V = np.zeros((network.dim, network.plunging_dimension))
+
     for client in network.clients:
-        V0 = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
-        V0 = client.S.T @ client.S @ V0
-        V += V0
+        client.Phi_V = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
+        V += client.S.T @ client.S @ client.Phi_V
 
     #V = orth(V)
     key_matrix_for_condition_number = np.copy(V)
@@ -180,9 +189,11 @@ def ortho_MF_initialization_for_GD_on_U(network: Network):
     V = np.zeros((network.dim, network.plunging_dimension))
     key_matrix_for_condition_number = np.zeros((network.dim, network.plunging_dimension))
     for client in network.clients:
-        Phi_V = ortho_group.rvs(network.nb_samples).T[:network.plunging_dimension].T * np.sqrt(network.nb_samples)
-        V += client.S.T @ Phi_V
-        key_matrix_for_condition_number += client.S_star.T @ Phi_V
+        client.Phi_V = ortho_group.rvs(network.nb_samples).T[:network.plunging_dimension].T * np.sqrt(
+            network.nb_samples)
+
+        V += client.S.T @ client.Phi_V
+        key_matrix_for_condition_number += client.S_star.T @ client.Phi_V
         Phi_U = ortho_group.rvs(network.nb_samples).T[:network.plunging_dimension].T
         client.set_initial_U(Phi_U)
 
