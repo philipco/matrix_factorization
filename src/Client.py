@@ -7,25 +7,29 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.Test import orth
+from src.MatrixUtilities import orth
+from src.Utilities.PytorchUtilities import get_mnist
 
 
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, image_name: str = None):
+                 noise: int = 0, missing_value: int = 0, image_name: str = None, seed=1234):
         super().__init__()
-        self.nb_clients = nb_clients
         if image_name is None:
+            self.nb_clients = nb_clients
             self.dim = dim
             self.plunging_dimension = plunging_dimension
             self.nb_samples = nb_samples
             self.mask = self.generate_mask(missing_value)
-            self.clients = self.generate_network_of_clients(rank_S, noise)
+            self.rank_S = rank_S
+            self.clients = self.generate_network_of_clients(rank_S, seed, noise)
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
         elif image_name.__eq__("cameran"):
             cameraman = data.camera()
+
+            self.nb_clients = 1
             self.plunging_dimension = plunging_dimension
 
             self.dim = cameraman.shape[1]
@@ -35,6 +39,22 @@ class Network:
             self.clients = []
             for c_id in range(self.nb_clients):
                 self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, cameraman, self.plunging_dimension,
+                                      self.mask, noise))
+            self.W = self.generate_neighborood()
+            self.plot_graph_connectivity()
+        elif image_name.__eq__("mnist"):
+            dataset = get_mnist(5)
+
+            self.nb_clients = len(dataset)
+            self.plunging_dimension = plunging_dimension
+
+            self.dim = dataset[0].shape[1]
+            self.nb_samples = dataset[0].shape[0]
+            self.mask = self.generate_mask(missing_value)
+
+            self.clients = []
+            for c_id in range(self.nb_clients):
+                self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, dataset[c_id], self.plunging_dimension,
                                       self.mask, noise))
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
@@ -49,7 +69,7 @@ class Network:
         if self.nb_clients == 1:
             return
         # We remove the self connection to avoid loop on the graph.
-        G = nx.from_numpy_matrix(self.W - np.diag(np.diag(self.W)))
+        G = nx.from_numpy_array(self.W - np.diag(np.diag(self.W)))
         # Draw the graph
         pos = nx.spring_layout(G)  # Positions nodes using Fruchterman-Reingold force-directed algorithm
         nx.draw(G, pos, with_labels=True, node_color='skyblue', node_size=500, font_weight='bold', font_size=10)
@@ -62,26 +82,27 @@ class Network:
         if self.nb_clients == 2:
             return np.array([[0.5, 0.5], [0.5, 0.5]])
         if type == "REGULAR":
-            W = nx.to_numpy_matrix(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_array(nx.random_regular_graph(4, self.nb_clients, seed=456)) + np.eye(self.nb_clients, dtype=int)
         elif type == "ERDOS":
-            W = nx.to_numpy_matrix(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
+            W = nx.to_numpy_array(nx.fast_gnp_random_graph(self.nb_clients, 0.5, seed=456)) + np.eye(self.nb_clients, dtype=int)
         else:
             raise ValueError("Unrecognized type of connectivity graph.")
         W = np.array(W / np.sum(W, axis=1))
         assert (np.sum(W, axis=1) == 1).all(), "W is not doubly stochastic."
         return W
 
-    def generate_network_of_clients(self, rank_S: int, noise: int = 0):
-        np.random.seed(1234)
+    def generate_network_of_clients(self, rank_S: int, seed, noise: int = 0):
+        np.random.seed(seed)
         clients = []
         V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
         for c_id in range(self.nb_clients):
-            U_star, D_star = self.generate_low_rank_matrix(rank_S)
+            # V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
+            U_star, D_star = self.generate_low_rank_matrix(rank_S, c_id)
             clients.append(Client(c_id, self.dim, self.nb_samples, U_star, D_star, V_star, self.plunging_dimension,
                                   self.mask, noise))
         return clients
 
-    def generate_low_rank_matrix(self, rank: int):
+    def generate_low_rank_matrix(self, rank: int, c_id: int):
         # assert self.dim >= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
         U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
@@ -90,7 +111,7 @@ class Network:
         D_star[0, 0] = 1
         for k in range(1, rank):
             # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1
+            D_star[k, k] = 1  #/k**4 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
 
         return U_star, D_star
 
@@ -109,7 +130,8 @@ class Client:
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
         self.mask = mask
-        self.S_star = U_star @ D_star @ V_star.T
+        rotation = ortho_group.rvs(dim=self.dim)
+        self.S_star = U_star @ D_star @ V_star.T #@ rotation
         self.S = np.copy(self.S_star)
         if noise != 0:
             print("Adding some noise.")
@@ -119,6 +141,7 @@ class Client:
         self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
+        self.Phi_V = None
 
     def reset_eig(self, eigs):
         for k in range(len(eigs)):
@@ -126,9 +149,9 @@ class Client:
             self.D_star[k, k] = eigs[k]
         self.S = self.U_star @ self.D_star @ self.V_star.T
 
-    def loss(self, l1_coef, l2_coef):
+    def loss(self, U, V, l1_coef, l2_coef):
         # S is already multiplied by the mask.
-        return np.linalg.norm(self.S - self.mask * (self.U @ self.V.T), ord='fro') ** 2 / 2
+        return np.linalg.norm(self.S - self.mask * (U @ V.T), ord='fro') ** 2 / 2 + l2_coef * np.linalg.norm(U, ord="fro")**2 / 2
 
     def loss_star(self):
         return np.linalg.norm(self.mask * (self.S_star - self.U @ self.V.T), ord='fro') ** 2 / 2
@@ -151,7 +174,7 @@ class Client:
                         grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
                 grad.append(-grad_i)
             return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
-        return (U @ self.V.T - self.S) @ self.V + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
+        return (U @ self.V.T - self.S) @ self.V
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""
@@ -167,15 +190,23 @@ class Client:
             return np.array(grad) + l1_coef * np.sign(V) + l2_coef * V
         return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * V
 
-    def set_U(self, U):
+    def set_initial_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = U, U, U, U, U
 
-    def set_V(self, V):
+    def set_U(self, U):
+        assert U.shape == (self.nb_samples, self.plunging_dimension), \
+            f"U has not the correct size on client {self.id}"
+        self.U = U
+
+    def set_initial_V(self, V):
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
+
+    def set_V(self, V):
+        self.V = V
 
     def local_power_iteration(self):
         # We update V.
@@ -183,11 +214,6 @@ class Client:
 
         # We orthogonalize V.
         V = orth(V)
-
-        # We compute eigenvalues using V.
-        # D = np.eye(self.plunging_dimension, self.plunging_dimension)
-        # for i in range(self.plunging_dimension):
-        #     D[i, i] = np.linalg.norm(self.S @ V[:, i])
 
         # We compute U.
         U = np.array([self.S @ V[:, i] for i in range(self.plunging_dimension)]).T

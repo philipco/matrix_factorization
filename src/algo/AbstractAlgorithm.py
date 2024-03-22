@@ -40,7 +40,7 @@ class AbstractAlgorithm(ABC):
         pass
 
     def __F__(self):
-        return np.mean([client.loss(self.l1_coef, self.l2_coef) for client in self.network.clients])
+        return np.sum([client.loss(client.U, client.V, self.l1_coef, self.l2_coef) for client in self.network.clients])
 
     def run(self):
         self.errors.append(self.__F__())

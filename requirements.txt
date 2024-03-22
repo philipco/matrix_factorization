@@ -1,2 +1,5 @@
-plotly # graph visualization
+numpy
+matplotlib
+scikit-image
+scipy
 networkx # graph visualization

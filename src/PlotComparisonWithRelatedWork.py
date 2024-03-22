@@ -20,7 +20,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 100
+NB_EPOCHS = 300
 NB_LOCAL_EPOCHS = 10
 NB_CLIENTS = 10
 
@@ -28,8 +28,8 @@ USE_MOMENTUM = False
 L1_COEF = 0
 L2_COEF = 0
 
-NB_RUNS = 10
-NOISE = 10**-2
+NB_RUNS = 20
+NOISE = 0*10**-2
 
 FONTSIZE = 9
 
