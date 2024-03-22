@@ -55,10 +55,10 @@ class AbstractGradientDescent(AbstractAlgorithm):
         elif self.init_type == "BI_SMART" and self.variable_optimization() == "U":
             self.sigma_min, self.sigma_max = bi_smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "POWER" and self.variable_optimization() != "U":
-            self.network.power = 2
+            self.network.power = 3
             self.sigma_min, self.sigma_max = smart_MF_initialization(self.network)
         elif self.init_type == "POWER" and self.variable_optimization() == "U":
-            self.network.power = 2
+            self.network.power = 3
             self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "ORTHO" and self.variable_optimization() != "U":
             self.sigma_min, self.sigma_max = ortho_MF_initialization(self.network)

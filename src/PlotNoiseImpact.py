@@ -2,6 +2,7 @@
 Created by Constantin Philippenko, 11th December 2023.
 """
 import numpy as np
+import scipy
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
@@ -33,9 +34,9 @@ FONTSIZE = 9
 
 
 def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, l1_coef: int, l2_coef: int):
+    labels = {"SMART": r"$\alpha=1$", "POWER": r"$\alpha=3$",  "LocalPower": 'LocalPower'}
 
-    inits = ["SMART", "BI_SMART", "ORTHO", "POWER"]
-    labels = {"SMART": 'smart', "BI_SMART": 'bismart', "ORTHO": "ortho", "POWER": 'power', "LocalPower": 'LocalPower'}
+    inits = ["SMART", "POWER"]
     algo_name = ["LocalPower"]
     related_work = [DistributedPowerMethod]
 
@@ -43,11 +44,10 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
     error_at_optimal_solution = {name: [] for name in inits + algo_name}
     cond = {name: [] for name in inits + algo_name}
 
-    error_optimal = []
+    errors_optimal = []
 
     optim_GD = GD_ON_U
 
-    vector_values = np.array([])  # To evaluate sparsity.
     for e in range_noise:
         print(f"=== noise = {e} ===")
         network = Network(nb_clients, nb_samples, dim, rank_S, latent_dim, noise=e)
@@ -66,8 +66,15 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
             algo = optim(network, NB_EPOCHS // NB_LOCAL_EPOCHS, 0.01, "RANDOM", NB_LOCAL_EPOCHS)
             errors[algo.name()].append(algo.run()[-1])
             cond[algo.name()].append(algo.sigma_min / algo.sigma_max)
-        error_optimal.append(np.mean(
-            [np.linalg.norm(client.S - client.S_star, ord='fro') ** 2 / 2 for client in network.clients]))
+
+        ## Optimal error. ###
+        S_stacked = np.concatenate([client.S for client in network.clients])
+        _, singular_values, _ = scipy.linalg.svd(S_stacked)
+
+        error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
+                                                                                 min(nb_clients * network.nb_samples,
+                                                                                     network.dim))])
+        errors_optimal.append(error_optimal)
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -79,22 +86,26 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
 
     for init in inits:
-        axs.plot(np.log10(range_noise), np.log10(error_at_optimal_solution[init]), color=init_colors[init], lw=1,
-                 marker="^")
+        axs.plot(np.log10(range_noise), np.log10(error_at_optimal_solution[init]), color=init_colors[init], lw=1)
         axs.plot(np.log10(range_noise), np.log10(errors[init]), color=init_colors[init], linestyle=init_linestyle[init])
 
     for name in algo_name:
-        axs.plot(np.log10(range_noise), np.log10(errors[name]), color=init_colors[name], linestyle="-")
+        axs.plot(np.log10(range_noise), np.log10(errors[name]), color=init_colors[name], linestyle="-", marker="^")
 
     axs.set_xlabel(r"Noise level", fontsize=FONTSIZE)
 
-    axs.plot(np.log10(range_noise), np.log10(error_optimal), color=COLORS[2], lw=2)
+    axs.plot(np.log10(range_noise), np.log10(errors_optimal), color=COLORS[2], lw=2)
 
-    init_legend = [Line2D([0], [0], linestyle=init_linestyle[init], color=init_colors[init],
-                          lw=2, label=labels[init]) for init in inits + algo_name]
-    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, marker="^",
-                              label=r'$\| S - \hat{S} \|^2_F$'))
-    init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$\| S - S_* \|^2_F$'))
+    init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
+                          lw=2, label=labels[init]) for init in inits]
+    for init in algo_name:
+        init_legend.append(Line2D([0], [0], color=init_colors[init], linestyle="-",
+                          lw=2, label=labels[init], marker="^"))
+    if errors_optimal != 0:
+        init_legend.append(
+            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
+    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, label="Exact solution"))
+    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent"))
 
 
 
@@ -103,20 +114,19 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
 
     # Add a zoomed-in region
-    x1, x2, y1, y2 = -15.05, -14.8, -26.4, -26  # subregion of the original image
+    x1, x2, y1, y2 = -15.1, -14.85, -25.8, -24.2  # subregion of the original image
     #  specify the position and size of the inset_axes relative to the parent axes
     inset_position = [0.35, 0, 0.3, 0.3] # [left, bottom, width, height]
     axins = axs.inset_axes(
         inset_position,
         xlim=(x1, x2), ylim=(y1, y2), xticklabels=[], yticklabels=[])
     for init in inits:
-        axins.plot(np.log10(range_noise), np.log10(error_at_optimal_solution[init]), color=init_colors[init], lw=1,
-                 marker="^")
+        axins.plot(np.log10(range_noise), np.log10(error_at_optimal_solution[init]), color=init_colors[init], lw=1)
         axins.plot(np.log10(range_noise), np.log10(errors[init]), color=init_colors[init],
                    linestyle=init_linestyle[init])
     for name in algo_name:
-        axins.plot(np.log10(range_noise), np.log10(errors[name]), color=init_colors[name], linestyle="-")
-    axins.plot(np.log10(range_noise), np.log10(error_optimal), color=COLORS[2], lw=2)
+        axins.plot(np.log10(range_noise), np.log10(errors[name]), color=init_colors[name], linestyle="-", marker="^")
+    axins.plot(np.log10(range_noise), np.log10(errors_optimal), color=COLORS[2], lw=2)
     # Remove tick labels in the zoom-in box
     axins.set_xticks([])
     axins.set_yticks([])
@@ -133,6 +143,8 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
 
 
 if __name__ == '__main__':
+    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 5, 0, 0)
     plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
-    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-6)
-    plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-3)
+    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
+    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-6)
+    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-3)
