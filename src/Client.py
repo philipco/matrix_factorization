@@ -3,11 +3,11 @@ Created by Constantin Philippenko, 11th December 2023.
 """
 import networkx as nx
 import numpy as np
+import scipy
 from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.MatrixUtilities import orth
 from src.Utilities.PytorchUtilities import get_mnist
 
 
@@ -94,35 +94,32 @@ class Network:
     def generate_network_of_clients(self, rank_S: int, seed, noise: int = 0):
         np.random.seed(seed)
         clients = []
-        V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
+        U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S)
+        S = U_star @ D_star @ V_star.T
+
         for c_id in range(self.nb_clients):
-            # V_star = ortho_group.rvs(dim=self.dim)[:rank_S].T
-            U_star, D_star = self.generate_low_rank_matrix(rank_S, c_id)
-            clients.append(Client(c_id, self.dim, self.nb_samples, U_star, D_star, V_star, self.plunging_dimension,
+            S_i = S[c_id * self.nb_samples: (c_id + 1) * self.nb_samples]
+            clients.append(Client(c_id, self.dim, self.nb_samples, S_i, self.plunging_dimension,
                                   self.mask, noise))
         return clients
 
-    def generate_low_rank_matrix(self, rank: int, c_id: int):
-        # assert self.dim >= self.nb_samples, "The numbers of features d must be bigger or equal than the number of rows n."
+    def generate_low_rank_matrix(self, rank: int):
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
-        U_star = ortho_group.rvs(dim=self.nb_samples)[:rank].T
+
+        V_star = ortho_group.rvs(dim=self.dim)[:rank].T
+        U_star = ortho_group.rvs(dim=self.nb_samples * self.nb_clients)[:rank].T
         D_star = np.zeros((rank, rank))
 
         D_star[0, 0] = 1
         for k in range(1, rank):
-            # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            D_star[k, k] = 1  #/k**4 #- c_id if c_id % 2 == 0 else c_id #np.random.normal(0, c_id)
+            D_star[k, k] = 1
 
-        return U_star, D_star
-
-    def reset_eig(self, eigs):
-        for client in self.clients:
-            client.reset_eig(eigs)
+        return U_star, D_star, V_star
 
 
 class Client:
 
-    def __init__(self, id: int, dim: int, nb_samples: int, U_star, D_star, V_star, plunging_dimension: int, mask,
+    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, mask,
                  noise: int = 0) -> None:
         super().__init__()
         self.id = id
@@ -131,23 +128,16 @@ class Client:
         self.plunging_dimension = plunging_dimension
         self.mask = mask
         rotation = ortho_group.rvs(dim=self.dim)
-        self.S_star = U_star @ D_star @ V_star.T #@ rotation
+        self.S_star = S_star
         self.S = np.copy(self.S_star)
         if noise != 0:
-            print("Adding some noise.")
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
         if not mask.all():
             self.S *= self.mask
-        self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
+        # self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
         self.Phi_V = None
-
-    def reset_eig(self, eigs):
-        for k in range(len(eigs)):
-            # WARNING: For now we have eigenvalues equal to 1 or to 0.
-            self.D_star[k, k] = eigs[k]
-        self.S = self.U_star @ self.D_star @ self.V_star.T
 
     def loss(self, U, V, l1_coef, l2_coef):
         # S is already multiplied by the mask.
@@ -213,10 +203,10 @@ class Client:
         V = self.S.T @ self.S @ self.V / self.nb_samples
 
         # We orthogonalize V.
-        V = orth(V)
+        V = scipy.linalg.orth(V, rcond=0)
 
         # We compute U.
-        U = np.array([self.S @ V[:, i] for i in range(self.plunging_dimension)]).T
+        U = self.S @ V
 
         self.set_U(U)
         self.set_V(V)
@@ -235,7 +225,6 @@ class ClientRealData(Client):
         self.S_star = self.S = S_star.astype(np.float64)
         self.S = np.copy(self.S_star)
         if noise != 0:
-            print("Adding some noise.")
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
         if not mask.all():
             self.S *= self.mask
