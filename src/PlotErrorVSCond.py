@@ -25,6 +25,7 @@ NB_RUNS = 50
 
 FONTSIZE=9
 
+
 def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, 
                                     noise: int, l1_coef: int,  l2_coef: int):
 
@@ -87,8 +88,8 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
     _, singular_values, _ = scipy.linalg.svd(S_stacked)
 
     error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
-                                                                             min(nb_clients * network.nb_samples,
-                                                                                 network.dim))])
+                                                                         min(np.sum([c.nb_samples for c in network.clients]),
+                                                                             network.dim))])
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in cond["SMART"]]
         if USE_MOMENTUM:
@@ -117,24 +118,6 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
         title += f"_momentum"
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
-
-    # plt.figure(figsize=(6, 4))
-    # vector_values = np.abs(vector_values)
-    # vector_values[vector_values < 10**-10] = 10**-12
-    # plt.hist(np.log(vector_values), bins=15, alpha=0.7)
-    # plt.xlabel('Value')
-    # plt.ylabel('Frequency')
-    # plt.grid(True)
-    # title = f"../pictures/hist_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
-    # if noise != 0:
-    #     title += f"_eps{noise}"
-    # if algo.l1_coef != 0:
-    #     title += f"_lasso{l1_coef}"
-    # if algo.l2_coef != 0:
-    #     title += f"_ridge{l2_coef}"
-    # if USE_MOMENTUM:
-    #     title += f"_momentum"
-    # plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
 if __name__ == '__main__':
 
