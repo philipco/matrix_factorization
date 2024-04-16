@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.Utilities.PytorchUtilities import get_mnist
+from src.Utilities.PytorchUtilities import get_mnist, get_celeba
 
 
 class Network:
@@ -20,26 +20,24 @@ class Network:
             self.nb_clients = nb_clients
             self.dim = dim
             self.plunging_dimension = plunging_dimension
-            self.nb_samples = nb_samples
-            self.mask = self.generate_mask(missing_value)
+            # self.mask = self.generate_mask(missing_value, nb_samples)
             self.rank_S = rank_S
-            self.clients = self.generate_network_of_clients(rank_S, seed, noise)
+            self.clients = self.generate_network_of_clients(rank_S, missing_value, nb_samples, seed, noise)
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
-        elif image_name.__eq__("cameran"):
+        elif image_name.__eq__("cameraman"):
             cameraman = data.camera()
 
             self.nb_clients = 1
             self.plunging_dimension = plunging_dimension
 
             self.dim = cameraman.shape[1]
-            self.nb_samples = cameraman.shape[0]
-            self.mask = self.generate_mask(missing_value)
+            # self.mask = self.generate_mask(missing_value, nb_samples)
 
             self.clients = []
             for c_id in range(self.nb_clients):
-                self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, cameraman, self.plunging_dimension,
-                                      self.mask, noise))
+                self.clients.append(ClientRealData(c_id, self.dim, cameraman.shape[0], cameraman, self.plunging_dimension,
+                                    missing_value, noise))
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
         elif image_name.__eq__("mnist"):
@@ -49,21 +47,29 @@ class Network:
             self.plunging_dimension = plunging_dimension
 
             self.dim = dataset[0].shape[1]
-            self.nb_samples = dataset[0].shape[0]
-            self.mask = self.generate_mask(missing_value)
+            # self.mask = self.generate_mask(missing_value)
 
             self.clients = []
             for c_id in range(self.nb_clients):
-                self.clients.append(ClientRealData(c_id, self.dim, self.nb_samples, dataset[c_id], self.plunging_dimension,
-                                      self.mask, noise))
+                self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
+                                                   self.plunging_dimension, missing_value, noise))
             self.W = self.generate_neighborood()
             self.plot_graph_connectivity()
+        elif image_name.__eq__("celeba"):
+            dataset = get_celeba(nb_clients)
 
+            self.nb_clients = nb_clients
+            self.plunging_dimension = plunging_dimension
 
-    def generate_mask(self, missing_value):
-        if missing_value == 0:
-            return np.ones((self.nb_samples, self.dim))
-        return np.random.choice([0, 1], size=(self.nb_samples, self.dim), p=[missing_value, 1 - missing_value])
+            self.dim = dataset[0].shape[1]
+            # self.mask = self.generate_mask(missing_value)
+
+            self.clients = []
+            for c_id in range(self.nb_clients):
+                self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
+                                                   self.plunging_dimension, missing_value, noise))
+            self.W = self.generate_neighborood()
+            self.plot_graph_connectivity()
 
     def plot_graph_connectivity(self):
         if self.nb_clients == 1:
@@ -91,23 +97,23 @@ class Network:
         assert (np.sum(W, axis=1) == 1).all(), "W is not doubly stochastic."
         return W
 
-    def generate_network_of_clients(self, rank_S: int, seed, noise: int = 0):
+    def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
         np.random.seed(seed)
         clients = []
-        U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S)
+        U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S, nb_samples)
         S = U_star @ D_star @ V_star.T
 
         for c_id in range(self.nb_clients):
-            S_i = S[c_id * self.nb_samples: (c_id + 1) * self.nb_samples]
-            clients.append(Client(c_id, self.dim, self.nb_samples, S_i, self.plunging_dimension,
-                                  self.mask, noise))
+            S_i = S[c_id * nb_samples: (c_id + 1) * nb_samples]
+            clients.append(Client(c_id, self.dim, nb_samples, S_i, self.plunging_dimension,
+                                  missing_value, noise))
         return clients
 
-    def generate_low_rank_matrix(self, rank: int):
+    def generate_low_rank_matrix(self, rank: int, nb_samples):
         assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
 
         V_star = ortho_group.rvs(dim=self.dim)[:rank].T
-        U_star = ortho_group.rvs(dim=self.nb_samples * self.nb_clients)[:rank].T
+        U_star = ortho_group.rvs(dim=nb_samples * self.nb_clients)[:rank].T
         D_star = np.zeros((rank, rank))
 
         D_star[0, 0] = 1
@@ -119,25 +125,30 @@ class Network:
 
 class Client:
 
-    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, mask,
+    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, missing_value,
                  noise: int = 0) -> None:
         super().__init__()
         self.id = id
         self.dim = dim
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
-        self.mask = mask
+        self.mask = self.generate_mask(missing_value, nb_samples)
         rotation = ortho_group.rvs(dim=self.dim)
         self.S_star = S_star
         self.S = np.copy(self.S_star)
         if noise != 0:
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
-        if not mask.all():
+        if not self.mask.all():
             self.S *= self.mask
         # self.U_star, self.D_star, self.V_star = U_star, D_star, V_star
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None
         self.Phi_V = None
+
+    def generate_mask(self, missing_value, nb_samples):
+        if missing_value == 0:
+            return np.ones((nb_samples, self.dim))
+        return np.random.choice([0, 1], size=(nb_samples, self.dim), p=[missing_value, 1 - missing_value])
 
     def loss(self, U, V, l1_coef, l2_coef):
         # S is already multiplied by the mask.
@@ -215,18 +226,18 @@ class Client:
 
 class ClientRealData(Client):
 
-    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, mask,
+    def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, missing_value,
                  noise: int = 0) -> None:
         self.id = id
         self.dim = dim
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
-        self.mask = mask
+        self.mask = self.generate_mask(missing_value, nb_samples)
         self.S_star = self.S = S_star.astype(np.float64)
         self.S = np.copy(self.S_star)
         if noise != 0:
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))
-        if not mask.all():
+        if not self.mask.all():
             self.S *= self.mask
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = None, None, None, None, None
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = None, None, None, None, None

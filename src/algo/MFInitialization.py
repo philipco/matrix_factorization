@@ -65,7 +65,7 @@ def smart_MF_initialization(network: Network):
 def smart_MF_initialization_for_GD_on_U(network: Network):
 
     # V = np.zeros((network.dim, network.plunging_dimension))
-    Phi_V = [generate_gaussian_matrix(network.nb_samples, client.plunging_dimension, 1) for client in network.clients]
+    Phi_V = [generate_gaussian_matrix(client.nb_samples, client.plunging_dimension, 1) for client in network.clients]
 
 
     S = np.concatenate([client.S for client in network.clients])
@@ -89,8 +89,8 @@ def smart_MF_initialization_for_GD_on_U(network: Network):
 
     key_matrix_for_condition_number = np.copy(V_total)
     for client in network.clients:
-        Phi_U = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension,
-                                         1 / np.sqrt(network.nb_samples))
+        Phi_U = generate_gaussian_matrix(client.nb_samples, network.plunging_dimension,
+                                         1 / np.sqrt(client.nb_samples))
         client.set_initial_U(Phi_U)
         client.set_initial_V(V)
     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension-1, which='SM')[1]
@@ -138,47 +138,6 @@ def bi_smart_MF_initialization_for_GD_on_U(network: Network):
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
-
-# def power_MF_initialization(network: Network, nb_power: int):
-#     U = []
-#     # When initialization U in the span of S, Phi is shared by all clients.
-#     for client in network.clients:
-#         U0 = generate_gaussian_matrix(network.nb_samples, network.plunging_dimension, 1)
-#         for k in range(nb_power):
-#             U0 = client.S @ client.S.T @ U0 / client.dim
-#             U0 = orth(U0)
-#         client.set_initial_U(U0)
-#         U.append(U0)
-#         V = np.array([client.S.T @ U0[:, i] for i in range(network.plunging_dimension)]).T
-#         client.set_initial_V(V)
-#     U = np.concatenate(U)
-#     smallest_eigenvalues = svds(U, k=network.plunging_dimension - 1, which='SM')[1]
-#     sigma_min = np.min(smallest_eigenvalues[smallest_eigenvalues > 10**-10])  # smallest non-zero eigenvalue
-#     sigma_max = svds(U, k=1, which='LM')[1][0]
-#     print(f"===> kappa: {sigma_max / sigma_min}")
-#     return sigma_min, sigma_max
-#
-#
-# def power_MF_initialization_for_GD_on_U(network: Network, nb_power: int):
-#     # assert nb_power >= 1, "There must be at least one power iteration."
-#     V = np.zeros((network.dim, network.plunging_dimension))
-#
-#     for client in network.clients:
-#         client.Phi_V = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1)
-#         V += client.S.T @ client.S @ client.Phi_V
-#
-#     #V = orth(V)
-#     key_matrix_for_condition_number = np.copy(V)
-#     for client in network.clients:
-#         U = client.S @ V
-#         client.set_initial_U(U)
-#         client.set_initial_V(V)
-#     smallest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='SM')[1]
-#     sigma_min = smallest_eigenvalues[network.plunging_dimension - network.rank_S]
-#     largest_eigenvalues = svds(key_matrix_for_condition_number, k=network.plunging_dimension - 1, which='LM')[1]
-#     sigma_max = largest_eigenvalues[-1]
-#     print(f"===> kappa: {sigma_max / sigma_min}")
-#     return sigma_min, sigma_max
 
 def ortho_MF_initialization(network: Network):
     U = []

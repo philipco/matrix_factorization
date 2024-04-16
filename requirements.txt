@@ -2,4 +2,9 @@ numpy
 matplotlib
 scikit-image
 scipy
+numba
 networkx # graph visualization
+
+torch
+torchvision
+pandas

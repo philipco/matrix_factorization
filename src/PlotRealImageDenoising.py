@@ -18,7 +18,7 @@ matplotlib.rcParams.update({
 })
 
 NB_EPOCHS = 200
-NB_CLIENTS = 1
+NB_CLIENTS = 10
 L1_COEF = 0
 L2_COEF = 0
 
@@ -26,8 +26,8 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, None, None, None, 100, noise=50,
-                      image_name="cameran")
+    network = Network(NB_CLIENTS, None, None, None, 10, noise=0,
+                      image_name="celeba")
 
     optimizations = {"U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
