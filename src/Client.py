@@ -150,22 +150,25 @@ class Client:
             return np.ones((nb_samples, self.dim))
         return np.random.choice([0, 1], size=(nb_samples, self.dim), p=[missing_value, 1 - missing_value])
 
-    def loss(self, U, V, l1_coef, l2_coef):
+    def regularization_term(self, U, l1_coef, l2_coef, nuc_coef):
+        return (l1_coef * np.linalg.norm(U, ord=1) + l2_coef * np.linalg.norm(U, ord="fro")**2 / 2
+                + nuc_coef * np.linalg.norm(U, ord="nuc"))
+
+    def loss(self, U, V, l1_coef, l2_coef, nuc_coef):
         # S is already multiplied by the mask.
-        return np.linalg.norm(self.S - self.mask * (U @ V.T), ord='fro') ** 2 / 2 + l2_coef * np.linalg.norm(U, ord="fro")**2 / 2
+        return (np.linalg.norm(self.S - self.mask * (U @ V.T), ord='fro') ** 2 / 2
+                + self.regularization_term(U, l1_coef, l2_coef, nuc_coef))
 
     def loss_star(self):
         return np.linalg.norm(self.mask * (self.S_star - self.U @ self.V.T), ord='fro') ** 2 / 2
 
-    def local_grad_wrt_U(self, U, l1_coef, l2_coef):
+    def local_grad_wrt_U(self, U, l1_coef, l2_coef, nuc_coef):
         """Gradient of F w.r.t. variable U."""
         nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
-        if l1_coef != 0:
+        if nuc_coef != 0:
             rank = np.linalg.matrix_rank(U)
             u, s, v = np.linalg.svd(U, full_matrices=False)
             nuclear_grad = u[:,:rank] @ v[:,:rank].T
-            if rank == 5:
-                print("yes!")
         if not self.mask.all():
             grad = []
             for i in range(self.nb_samples):
@@ -174,8 +177,9 @@ class Client:
                     if self.mask[i,j]:
                         grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
                 grad.append(-grad_i)
-            return np.array(grad) + l1_coef * np.sign(U) + l2_coef * U + l1_coef * nuclear_grad
-        return (U @ self.V.T - self.S) @ self.V
+            return np.array(grad)
+        sign_U = 2 * (U >= 0) - 1
+        return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
 
     def local_grad_wrt_V(self, V, l1_coef, l2_coef):
         """Gradient of F w.r.t. variable V."""

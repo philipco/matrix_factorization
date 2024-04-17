@@ -1,17 +1,17 @@
+import numpy as np
 from torchvision import datasets, transforms
 from src.Utilities.data.CelebaDataset import CelebaDataset
 
 
-def get_images_by_label(dataset, label, num_images=15):
-    label_indices = [i for i in range(len(dataset)) if dataset.targets[i] == label]
-    images = []
+def get_images_by_label(dataset, num_images=50):
+    targets = np.unique(dataset.targets)
+    images_by_label = {label: [] for label in targets}
+    for i in range(min(num_images, len(dataset))):
+        images_by_label[dataset[i][1]].append(dataset[i][0][0].numpy())
 
-    for i in range(min(num_images, len(label_indices))):
-        index = label_indices[i]
-        image, _ = dataset[index]
-        images.append(image[0].numpy())
-
-    return images
+    for label in targets:
+        images_by_label[label] = np.concatenate(images_by_label[label])
+    return images_by_label
 
 
 def get_mnist(target_label):
@@ -22,7 +22,7 @@ def get_mnist(target_label):
     train_dataset = datasets.MNIST(root="~/GITHUB/DATASETS", train=True, download=True, transform=transform)
 
     # Retrieve images by label
-    return get_images_by_label(train_dataset, target_label)
+    return get_images_by_label(train_dataset)
 
 
 def get_celeba(nb_clients):
