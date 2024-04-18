@@ -26,6 +26,7 @@ class AbstractAlgorithm(ABC):
         # REGULARIZATION
         self.l1_coef = 0
         self.l2_coef = 0
+        self.nuc_coef = 0
 
     @abstractmethod
     def name(self):
@@ -40,7 +41,7 @@ class AbstractAlgorithm(ABC):
         pass
 
     def __F__(self):
-        return np.sum([client.loss(client.U, client.V, self.l1_coef, self.l2_coef) for client in self.network.clients])
+        return np.sum([client.loss(client.U, client.V, self.l1_coef, self.l2_coef, self.nuc_coef) for client in self.network.clients])
 
     def run(self):
         self.errors.append(self.__F__())

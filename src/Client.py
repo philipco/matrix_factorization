@@ -8,15 +8,25 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.Utilities.PytorchUtilities import get_mnist, get_celeba
+from src.Utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, get_w8a
+
+
+def plot_svd(S, network):
+    fig, axs = plt.subplots(1, 1, figsize=(3, 4))
+    axs.plot(np.log(np.linalg.svd(S)[1]), lw=2)
+    axs.set_ylabel(r"$\log(\sigma_k)$", fontsize=9)
+    axs.set_xlabel(r"$k$", fontsize=9)
+    title = f"../pictures/svd_{network.dataset_name}_N{network.nb_clients}_d{network.dim}"
+    plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
 
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, image_name: str = None, seed=1234):
+                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", seed=1234):
         super().__init__()
-        if image_name is None:
+        self.dataset_name = dataset_name
+        if dataset_name == "synth":
             self.nb_clients = nb_clients
             self.dim = dim
             self.plunging_dimension = plunging_dimension
@@ -24,8 +34,7 @@ class Network:
             self.rank_S = rank_S
             self.clients = self.generate_network_of_clients(rank_S, missing_value, nb_samples, seed, noise)
             self.W = self.generate_neighborood()
-            self.plot_graph_connectivity()
-        elif image_name.__eq__("cameraman"):
+        elif dataset_name.__eq__("cameraman"):
             cameraman = data.camera()
 
             self.nb_clients = 1
@@ -39,9 +48,15 @@ class Network:
                 self.clients.append(ClientRealData(c_id, self.dim, cameraman.shape[0], cameraman, self.plunging_dimension,
                                     missing_value, noise))
             self.W = self.generate_neighborood()
-            self.plot_graph_connectivity()
-        elif image_name.__eq__("mnist"):
-            dataset = get_mnist(5)
+        elif dataset_name in ["mnist", "celeba", "w8a", "real-sim"]:
+            if dataset_name.__eq__("mnist"):
+                dataset = get_mnist()
+            elif dataset_name.__eq__("celeba"):
+                dataset = get_celeba(nb_clients)
+            elif dataset_name.__eq__("w8a"):
+                dataset = get_w8a(nb_clients)
+            elif dataset_name.__eq__("real-sim"):
+                dataset = get_real_sim(nb_clients)
 
             self.nb_clients = len(dataset)
             self.plunging_dimension = plunging_dimension
@@ -54,22 +69,10 @@ class Network:
                 self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
                                                    self.plunging_dimension, missing_value, noise))
             self.W = self.generate_neighborood()
-            self.plot_graph_connectivity()
-        elif image_name.__eq__("celeba"):
-            dataset = get_celeba(nb_clients)
 
-            self.nb_clients = nb_clients
-            self.plunging_dimension = plunging_dimension
-
-            self.dim = dataset[0].shape[1]
-            # self.mask = self.generate_mask(missing_value)
-
-            self.clients = []
-            for c_id in range(self.nb_clients):
-                self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
-                                                   self.plunging_dimension, missing_value, noise))
-            self.W = self.generate_neighborood()
-            self.plot_graph_connectivity()
+        S = np.concatenate([client.S for client in self.clients])
+        print("Start to compute the svd of the dataset.")
+        plot_svd(S, self)
 
     def plot_graph_connectivity(self):
         if self.nb_clients == 1:
