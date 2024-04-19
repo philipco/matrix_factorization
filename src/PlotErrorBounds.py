@@ -23,7 +23,7 @@ matplotlib.rcParams.update({
 })
 
 NB_EPOCHS = 1000
-NB_CLIENTS = 10
+NB_CLIENTS = 1
 USE_MOMENTUM = False
 NB_RUNS = 50
 
@@ -31,28 +31,17 @@ FONTSIZE=9
 
 
 def compute_probabilistic_bound_Pii(network, r, i, eta, Ustar, Vstar, Sigma, Phi_stacked):
-    ### i is the index-1.
-
-        # if network.power % 2 == 1:
-        #     Phi_hat = Ustar.T @ Phi_stacked
-        # else:
-        #     Phi_hat = Vstar.T @ Phi_stacked
-
-    # _, sv_Phi_hat, _ = scipy.linalg.svd(Phi_hat[:r].T @ Phi_hat[:r])
 
     ratio_sv = Sigma[i][i] ** (2 * (network.power - 1)) / Sigma[r-1][r-1] ** (2 * (network.power - 1))
 
-    probabilistic_bound_Pii = 4 * np.log(2) * r * (r+1) * ratio_sv
+    probabilistic_bound_Pii = 32 * np.log(4) * r * (r+1) * ratio_sv
     return probabilistic_bound_Pii
 
 
 def compute_bound_Pii(network, P, r, i, Ustar, Vstar, Sigma, Phi_stacked):
     ### i is the index-1.
 
-    if network.power % 2 == 1:
-        Phi_hat = Ustar.T @ Phi_stacked
-    else:
-        Phi_hat = Vstar.T @ Phi_stacked
+    Phi_hat = Ustar.T @ Phi_stacked
 
     sv_Phi_hat, _ = scipy.linalg.eigh(Phi_hat[:r].T @ Phi_hat[:r])
 
@@ -61,33 +50,27 @@ def compute_bound_Pii(network, P, r, i, Ustar, Vstar, Sigma, Phi_stacked):
     denominator = np.linalg.norm(Phi_hat[i]) ** 2
     bound_Pii = denominator * ratio_sv / numerator
     assert P[i][i] <= bound_Pii or np.isclose(P[i][i], bound_Pii), f"The bound on Pii is not exact for i={i}"
-    return bound_Pii
+    return P[i][i]
 
 
 def compute_theoretical_bounds(network, eta):
 
     r = network.rank_S
     S_stacked = np.concatenate([client.S for client in network.clients])
-    if network.power % 2 == 0:
-        Phi_stacked = generate_gaussian_matrix(network.dim, r, 1) # In this case, all Phi are identical.
-    else:
-        Phi_stacked = np.concatenate([generate_gaussian_matrix(network.nb_samples, r,1) for client in network.clients])
+    Phi_stacked = np.concatenate([generate_gaussian_matrix(client.nb_samples, r,1) for client in network.clients])
 
     Ustar, singular_values, Vstar = scipy.linalg.svd(S_stacked)
     Vstar = Vstar.T
     sigma_max = np.max(singular_values)
-    Sigma = np.zeros((network.nb_clients * network.nb_samples, network.dim))
-    for j in range(min(network.nb_clients * network.nb_samples, network.dim)):
+    Sigma = np.zeros((np.sum([c.nb_samples for c in network.clients]), network.dim))
+    for j in range(min(np.sum([c.nb_samples for c in network.clients]), network.dim)):
         Sigma[j, j] = singular_values[j]
 
-    if network.power % 2 == 1:
-        Phi_tilde = power(Sigma, network.power) @ Ustar.T @ Phi_stacked
-    else:
-        Phi_tilde = power(Sigma, network.power) @ Vstar.T @ Phi_stacked
+    Phi_tilde = power(Sigma, network.power) @ Vstar.T @ Phi_stacked
     P = Phi_tilde @ np.linalg.pinv(Phi_tilde.T @ Phi_tilde) @ Phi_tilde.T
 
     upper_bound, upper_probabilistic_bound, almost_exact_bound = 0, 0, 0
-    for i in range(r+1, min(network.nb_clients * network.nb_samples, network.dim)):
+    for i in range(r+1, min(np.sum([c.nb_samples for c in network.clients]), network.dim)):
         upper_Pii = compute_bound_Pii(network, P, r, i, Ustar, Vstar, Sigma, Phi_stacked)
         upper_probabilistic_Pii = compute_probabilistic_bound_Pii(network, r, i, eta, Ustar, Vstar, Sigma, Phi_stacked)
         upper_bound += (singular_values[i]**2 * (1 + (sigma_max**2 - singular_values[i]**2) * upper_Pii / singular_values[r-1]**2))
@@ -134,7 +117,7 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
     for init in inits:
         x = np.log10(error_at_optimal_solution[init])
         plt.hist(x, bins=30, alpha=0.5, label=init, color="tab:blue", align="right")
-        # plt.hist(np.log10(theoretical_bounds[init]), bins=30, alpha=0.5, label=init, color="tab:orange")
+        plt.hist(np.log10(theoretical_bounds[init]), bins=30, alpha=0.5, label=init, color="tab:orange")
         plt.axvline(np.log10(np.mean(theoretical_probabilistic_bounds[init])), linewidth=2, color="tab:red")
 
     ## Optimal error. ###
@@ -177,10 +160,14 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 if __name__ == '__main__':
 
     # Without noise.
-    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
-                                    0)
+    # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 5, 0, 0,
+    #                                 0)
     plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 10**-6, 0,
                                     0)
+    # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 5, 10 ** -6, 0,
+    #                                 0)
+    # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 10**-6, 0,
+    #                                 0)
     # plot_errors_vs_condition_number(10, 50, 200, 5, 6, 0, 0,
     #                                 0)
     # plot_errors_vs_condition_number(10, 50, 200, 5, 10, 0, 0,

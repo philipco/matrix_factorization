@@ -7,7 +7,8 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Client import Network
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
+from src.utilities.data.DatasetsSettings import *
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -19,8 +20,6 @@ matplotlib.rcParams.update({
 })
 
 DATASET_NAME = "synth"
-NB_EPOCHS = 5000
-NB_CLIENTS = 10
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
@@ -29,8 +28,8 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS, 100, 100, 5, 5, noise=10**-6,
-                      dataset_name=DATASET_NAME)
+    network = Network(NB_CLIENTS[DATASET_NAME], 100, 1000, RANK_S[DATASET_NAME],
+                      50, noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
 
     optimization = GD_ON_U
     errors = {}
@@ -72,7 +71,7 @@ if __name__ == '__main__':
 
     for init in inits:
         print(f"\t== {init} ==")
-        algo = optimization(network, NB_EPOCHS, 0.01, init, L1_COEF, L2_COEF, NUC_COEF)
+        algo = optimization(network, NB_EPOCHS[DATASET_NAME], 0.01, init, L1_COEF, L2_COEF, NUC_COEF)
         errors[init] = algo.run()
         error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
         print(f"{init}\terror min:", errors[init][-1])

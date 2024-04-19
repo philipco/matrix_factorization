@@ -17,6 +17,8 @@ def plot_svd(S, network):
     axs.set_ylabel(r"$\log(\sigma_k)$", fontsize=9)
     axs.set_xlabel(r"$k$", fontsize=9)
     title = f"../pictures/svd_{network.dataset_name}_N{network.nb_clients}_d{network.dim}"
+    if hasattr(network, "noise"):
+        title += f"eps{network.noise}"
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
 
 
@@ -32,6 +34,7 @@ class Network:
             self.plunging_dimension = plunging_dimension
             # self.mask = self.generate_mask(missing_value, nb_samples)
             self.rank_S = rank_S
+            self.noise = noise
             self.clients = self.generate_network_of_clients(rank_S, missing_value, nb_samples, seed, noise)
             self.W = self.generate_neighborood()
             return
