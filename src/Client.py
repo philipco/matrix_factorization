@@ -34,6 +34,7 @@ class Network:
             self.rank_S = rank_S
             self.clients = self.generate_network_of_clients(rank_S, missing_value, nb_samples, seed, noise)
             self.W = self.generate_neighborood()
+            return
         elif dataset_name.__eq__("cameraman"):
             cameraman = data.camera()
 
@@ -101,7 +102,7 @@ class Network:
         return W
 
     def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
-        np.random.seed(seed)
+        np.random.seed(151515)
         clients = []
         U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S, nb_samples)
         S = U_star @ D_star @ V_star.T

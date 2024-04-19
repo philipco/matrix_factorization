@@ -27,13 +27,13 @@ FONTSIZE=9
 
 
 def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, 
-                                    noise: int, l1_coef: int,  l2_coef: int):
+                                    noise: int, l1_coef: int,  l2_coef: int,  nuc_coef: int):
 
     network = Network(nb_clients, nb_samples, dim, rank_S, latent_dim, noise=noise)
 
     optim = GD_ON_U
 
-    labels = {"SMART": r"$\alpha=1$", "POWER": r"$\alpha=3$"}
+    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
 
     inits = ["SMART", "POWER"]
     errors = {name: [] for name in inits}
@@ -49,11 +49,13 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
         vector_values = np.array([]) # To evaluate sparsity.
         for k in range(NB_RUNS):
 
-            algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef, l2_coef=l2_coef)
+            algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef,
+                         l2_coef=l2_coef, nuc_coef=nuc_coef)
             errors[init].append(algo.run()[-1])
             sigma_min[init].append(algo.sigma_min)
             cond[init].append(algo.sigma_min/algo.sigma_max)
-            error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef))
+            # All Nuclear and L1 coefficients are set to zero when computing the exact solution.
+            error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef, nuc_coef))
 
             if optim == GD_ON_U:
                 vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
@@ -114,6 +116,8 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
         title += f"_lasso{l1_coef}"
     if algo.l2_coef != 0:
         title += f"_ridge{l2_coef}"
+    if algo.nuc_coef != 0:
+        title += f"nuc{l2_coef}"
     if USE_MOMENTUM:
         title += f"_momentum"
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
@@ -122,10 +126,10 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 if __name__ == '__main__':
 
     # Without noise.
-    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 5, 10**-15, 0,
-                                    0)
-    # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
-    #                                 10**-9)
+    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 10**-6, 0,
+                                    0, 0)
+    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
+                                    0, 0)
     # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
     #                                 10 ** -6)
     #
