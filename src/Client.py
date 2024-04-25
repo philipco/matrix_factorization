@@ -8,18 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.stats import ortho_group
 from skimage import data
 
-from src.Utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, get_w8a
-
-
-def plot_svd(S, network):
-    fig, axs = plt.subplots(1, 1, figsize=(3, 4))
-    axs.plot(np.log(np.linalg.svd(S)[1]), lw=2)
-    axs.set_ylabel(r"$\log(\sigma_k)$", fontsize=9)
-    axs.set_xlabel(r"$k$", fontsize=9)
-    title = f"../pictures/svd_{network.dataset_name}_N{network.nb_clients}_d{network.dim}"
-    if hasattr(network, "noise"):
-        title += f"eps{network.noise}"
-    plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
+from src.utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, get_w8a
 
 
 class Network:
@@ -73,10 +62,6 @@ class Network:
                 self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
                                                    self.plunging_dimension, missing_value, noise))
             self.W = self.generate_neighborood()
-
-        S = np.concatenate([client.S for client in self.clients])
-        print("Start to compute the svd of the dataset.")
-        plot_svd(S, self)
 
     def plot_graph_connectivity(self):
         if self.nb_clients == 1:

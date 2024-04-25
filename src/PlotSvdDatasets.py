@@ -40,8 +40,8 @@ if __name__ == '__main__':
     all_datasets = ["synth", "mnist", "celeba", "w8a"]
     for dataset_name in all_datasets:
         noise = 10 ** -6 if dataset_name == "synth" else 0
-        network = Network(NB_CLIENTS[dataset_name], 100, 1000, RANK_S[dataset_name],
-                          50, noise=NOISE[dataset_name], dataset_name=dataset_name)
+        network = Network(NB_CLIENTS[dataset_name], 100, 100, RANK_S[dataset_name],
+                          LATENT_DIMENSION[dataset_name], noise=NOISE[dataset_name], dataset_name=dataset_name)
         S = np.concatenate([client.S for client in network.clients])
         svd[dataset_name] = compute_svd(S)
     plot_svd(svd, all_datasets)

@@ -34,7 +34,7 @@ FONTSIZE = 9
 
 
 def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, l1_coef: int, l2_coef: int):
-    labels = {"SMART": r"$\alpha=1$", "POWER": r"$\alpha=3$",  "LocalPower": 'LocalPower'}
+    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$",  "LocalPower": 'LocalPower'}
 
     inits = ["SMART", "POWER"]
     algo_name = ["LocalPower"]

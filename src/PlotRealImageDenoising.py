@@ -19,7 +19,7 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-DATASET_NAME = "synth"
+DATASET_NAME = "mnist"
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
@@ -28,8 +28,8 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    network = Network(NB_CLIENTS[DATASET_NAME], 100, 1000, RANK_S[DATASET_NAME],
-                      50, noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
+    network = Network(NB_CLIENTS[DATASET_NAME], 100, 100, RANK_S[DATASET_NAME],
+                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
 
     optimization = GD_ON_U
     errors = {}
@@ -103,17 +103,17 @@ if __name__ == '__main__':
                                                                              network.dim))])
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in errors["SMART"]]
-        axs.plot(z, color=COLORS[2], lw=2)
+        axs.plot(z, color=COLORS[2], lw=3)
 
     init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
-                          lw=2, label=labels[init]) for init in inits]
+                          lw=3, label=labels[init]) for init in inits]
     if error_optimal != 0:
         init_legend.append(
-            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
-    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, label="Exact solution"))
-    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent"))
+            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=3, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
+    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=3, label="Exact solution"))
+    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=3, label="Gradient descent"))
 
-    l2 = axs.legend(handles=init_legend, loc='center right', fontsize=FONTSIZE)
+    l2 = axs.legend(handles=init_legend, loc='lower right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
     title = f"../pictures/{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"

@@ -40,7 +40,7 @@ if __name__ == '__main__':
     network = Network(NB_CLIENTS, 100, 100, 5, 10, noise=NOISE)
 
     inits = ["SMART", "POWER"]
-    labels = {"SMART": r"$\alpha=1$", "POWER": r"$\alpha=3$",  "LocalPower": 'LocalPower'}
+    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$",  "LocalPower": 'LocalPower'}
     algo_name = ["LocalPower"]
 
     errors = {name: [] for name in inits + algo_name}
