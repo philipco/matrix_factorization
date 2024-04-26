@@ -28,4 +28,4 @@ class CelebaDataset(Dataset):
 
     def __getitem_by_identity__(self, idx):
         indices = self.identity.index[self.identity['Identity'] == idx].tolist()
-        return torch.cat([torch.cat([self.__getitem__(i)[j] for j in range(3)], dim=1) for i in indices]).numpy()
+        return torch.stack([torch.cat([self.__getitem__(i)[j] for j in range(3)], dim=1).view(-1) for i in indices]).numpy()

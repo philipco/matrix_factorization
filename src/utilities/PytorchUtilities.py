@@ -1,6 +1,6 @@
 import numpy as np
 from torchvision import datasets, transforms
-from src.Utilities.data.CelebaDataset import CelebaDataset
+from src.utilities.data.CelebaDataset import CelebaDataset
 from sklearn.datasets import load_svmlight_file, make_friedman1
 
 
@@ -12,7 +12,7 @@ def get_images_by_label(dataset, num_images=6000):
 
     for label in targets:
         images_by_label[label] = np.array(images_by_label[label])
-    return images_by_label
+    return list(images_by_label.values())
 
 
 def get_mnist():

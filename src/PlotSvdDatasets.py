@@ -37,7 +37,7 @@ def plot_svd(svd, all_datasets):
 if __name__ == '__main__':
 
     svd = {}
-    all_datasets = ["synth", "mnist", "celeba", "w8a"]
+    all_datasets = ["celeba", "mnist", "synth", "w8a"]
     for dataset_name in all_datasets:
         noise = 10 ** -6 if dataset_name == "synth" else 0
         network = Network(NB_CLIENTS[dataset_name], 100, 100, RANK_S[dataset_name],

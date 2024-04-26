@@ -10,6 +10,9 @@ from src.Client import Network
 from src.algo.GradientDescent import GD_ON_U, GD_ON_V
 
 import matplotlib
+
+from src.utilities.data.DatasetsSettings import *
+
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
     'font.family': 'serif',
@@ -18,18 +21,21 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-NB_EPOCHS = 1000
-NB_CLIENTS = 10
 USE_MOMENTUM = False
-NB_RUNS = 50
+NB_RUNS = 10
+DATASET_NAME = "celeba"
+L1_COEF = 0 #10**-2
+L2_COEF = 0 #10**-3
+NUC_COEF = 0
 
 FONTSIZE=9
 
 
-def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, 
-                                    noise: int, l1_coef: int,  l2_coef: int,  nuc_coef: int):
+def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int):
 
-    network = Network(nb_clients, nb_samples, dim, rank_S, latent_dim, noise=noise)
+
+    network = Network(NB_CLIENTS[DATASET_NAME], 100, 500, RANK_S[DATASET_NAME],
+                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
 
     optim = GD_ON_U
 
@@ -37,6 +43,7 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 
     inits = ["SMART", "POWER"]
     errors = {name: [] for name in inits}
+    error_after_elastic_net = {name: [] for name in inits}
     error_at_optimal_solution = {name: [] for name in inits}
     cond = {name: [] for name in inits}
     sigma_min = {name: [] for name in inits}
@@ -49,13 +56,14 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
         vector_values = np.array([]) # To evaluate sparsity.
         for k in range(NB_RUNS):
 
-            algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef,
+            algo = optim(network, NB_EPOCHS[DATASET_NAME], 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef,
                          l2_coef=l2_coef, nuc_coef=nuc_coef)
             errors[init].append(algo.run()[-1])
             sigma_min[init].append(algo.sigma_min)
             cond[init].append(algo.sigma_min/algo.sigma_max)
             # All Nuclear and L1 coefficients are set to zero when computing the exact solution.
             error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef, nuc_coef))
+            error_after_elastic_net[init].append(algo.elastic_net(l1_coef, l2_coef))
 
             if optim == GD_ON_U:
                 vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
@@ -75,6 +83,8 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
             axs.plot(np.array(x) ** 1, y, color=init_colors[init], lw=1)
         else:
             axs.plot(np.array(x) ** 2, y, color=init_colors[init], lw=1)
+
+        # Plot error after our GD implementation.
         x, y = zip(*sorted(zip(cond[init], np.log10(errors[init]))))
         if USE_MOMENTUM:
             axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=init_linestyle[init])
@@ -84,6 +94,13 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
             axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=init_linestyle[init])
             axs.set_xlabel(r"$\sigma^2_{\mathrm{min}}(\mathbf{V}) / \sigma^2_{\mathrm{max}}(\mathbf{V})$",
                            fontsize=FONTSIZE)
+
+        # Plot error after using scikit-learn implementation.
+        x, y = zip(*sorted(zip(cond[init], np.log10(error_after_elastic_net[init]))))
+        if USE_MOMENTUM:
+            axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=":", marker="*")
+        else:
+            axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=":", marker="*")
 
     ## Optimal error. ###
     S_stacked = np.concatenate([client.S for client in network.clients])
@@ -109,9 +126,9 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_cond_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
-    if noise != 0:
-        title += f"_eps{noise}"
+    title = f"../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE[DATASET_NAME] != 0:
+        title += f"_eps{NOISE[DATASET_NAME]}"
     if algo.l1_coef != 0:
         title += f"_lasso{l1_coef}"
     if algo.l2_coef != 0:
@@ -126,10 +143,10 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 if __name__ == '__main__':
 
     # Without noise.
-    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 10**-6, 0,
-                                    0, 0)
-    plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
-                                    0, 0)
+    plot_errors_vs_condition_number(0, 0.0001, 0)
+    # plot_errors_vs_condition_number(10**-3, 0, 0)
+    # plot_errors_vs_condition_number(0, 10 ** -3, 0)
+    # plot_errors_vs_condition_number(10 ** -3, 10 ** -3, 0)
     # plot_errors_vs_condition_number(NB_CLIENTS, 100, 100, 5, 6, 0, 0,
     #                                 10 ** -6)
     #

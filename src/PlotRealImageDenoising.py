@@ -90,8 +90,9 @@ if __name__ == '__main__':
 
     for init in inits:
         axs.plot(np.log10(errors[init]), color=init_colors[init], linestyle=init_linestyle[init])
-        z = [np.log10(error_at_optimal_solution[init]) for i in errors[init]]
-        axs.plot(z, color=init_colors[init])
+        x = np.linspace(0, len(errors[init]), num=10)
+        z = [np.log10(error_at_optimal_solution[init]) for i in x]
+        axs.plot(x, z, color=init_colors[init], marker="*")
 
     ## Optimal error. ###
     S_stacked = np.concatenate([client.S for client in network.clients])
@@ -109,14 +110,18 @@ if __name__ == '__main__':
                           lw=3, label=labels[init]) for init in inits]
     if error_optimal != 0:
         init_legend.append(
-            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=3, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
-    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=3, label="Exact solution"))
-    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=3, label="Gradient descent"))
+            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
+    init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, marker="*",
+                              label="Exact solution"))
+    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent"))
 
-    l2 = axs.legend(handles=init_legend, loc='lower right', fontsize=FONTSIZE)
-    axs.add_artist(l2)
+    if DATASET_NAME == "synth":
+        l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
+        axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
     title = f"../pictures/{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE[DATASET_NAME] != 0:
+        title += f"_eps{NOISE[DATASET_NAME]}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:

@@ -50,6 +50,8 @@ class Network:
                 dataset = get_w8a(nb_clients)
             elif dataset_name.__eq__("real-sim"):
                 dataset = get_real_sim(nb_clients)
+            else:
+                raise ValueError(f"Not a correct dataset: {dataset_name}")
 
             self.nb_clients = len(dataset)
             self.plunging_dimension = plunging_dimension

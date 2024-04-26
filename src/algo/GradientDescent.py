@@ -4,7 +4,7 @@ Created by Constantin Philippenko, 11th December 2023.
 from abc import abstractmethod
 
 import scipy
-from sklearn.linear_model import ElasticNet, LinearRegression
+from sklearn.linear_model import ElasticNet, LinearRegression, Ridge, SGDRegressor
 
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
@@ -78,19 +78,29 @@ class AbstractGradientDescent(AbstractAlgorithm):
         print("Smallest singular value: ({0}, {1})".format(smallest_sv_U, smallest_sv_V))
         return (smallest_sv_U, smallest_sv_V)
 
-    def elastic_net(self):
-        regr = LinearRegression(fit_intercept=False)#, l1_ratio=1)
+    def elastic_net(self, l1_coef, l2_coef):
+        error = 0
         for client in self.network.clients:
+            if l1_coef == 0 and l2_coef == 0:
+                regr = SGDRegressor(fit_intercept=False, penalty=None, eta0=self.step_size, learning_rate="constant",
+                                    max_iter=self.nb_epoch)
+            elif l1_coef == 0:
+                regr = Ridge(fit_intercept=False, alpha=l2_coef / 2, solver="sparse_cg", max_iter=self.nb_epoch)
+            else:
+                regr = ElasticNet(fit_intercept=False, alpha=l1_coef + l2_coef, l1_ratio=l1_coef / (l1_coef + l2_coef))
+
             regr.fit(client.V, client.S.T)
             client.U = regr.coef_
+            error += client.loss(client.U, client.V, l1_coef, l2_coef, 0)
+        return error
 
     def compute_exact_solution(self, l1_coef, l2_coef, nuc_coef):
         error = 0
         if self.variable_optimization() == "U":
             V = self.network.clients[0].V_0  # Clients share the same V.
-            VV = V.T @ V
+            VV = V.T @ V + + l2_coef * np.identity(V.shape[1])
             try:
-                VVinv = scipy.linalg.pinvh(VV + l2_coef * np.identity((VV.shape[0])))
+                VVinv = scipy.linalg.pinvh(VV)
             except np.linalg.LinAlgError:
                 return None
             for client in self.network.clients:
