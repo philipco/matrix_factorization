@@ -22,8 +22,8 @@ matplotlib.rcParams.update({
 })
 
 USE_MOMENTUM = False
-NB_RUNS = 10
-DATASET_NAME = "celeba"
+NB_RUNS = 50
+DATASET_NAME = "synth"
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
@@ -31,11 +31,11 @@ NUC_COEF = 0
 FONTSIZE=9
 
 
-def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int):
+def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc_coef: int):
 
 
-    network = Network(NB_CLIENTS[DATASET_NAME], 100, 500, RANK_S[DATASET_NAME],
-                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
+    network = Network(NB_CLIENTS[DATASET_NAME], 200, 200, RANK_S[DATASET_NAME],
+                      LATENT_DIMENSION[DATASET_NAME], noise=noise, dataset_name=DATASET_NAME)
 
     optim = GD_ON_U
 
@@ -56,14 +56,14 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
         vector_values = np.array([]) # To evaluate sparsity.
         for k in range(NB_RUNS):
 
-            algo = optim(network, NB_EPOCHS[DATASET_NAME], 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef,
+            algo = optim(network, 1000, 0.01, init, use_momentum=USE_MOMENTUM, l1_coef=l1_coef,
                          l2_coef=l2_coef, nuc_coef=nuc_coef)
             errors[init].append(algo.run()[-1])
             sigma_min[init].append(algo.sigma_min)
             cond[init].append(algo.sigma_min/algo.sigma_max)
             # All Nuclear and L1 coefficients are set to zero when computing the exact solution.
             error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef, nuc_coef))
-            error_after_elastic_net[init].append(algo.elastic_net(l1_coef, l2_coef))
+            # error_after_elastic_net[init].append(algo.elastic_net(l1_coef, l2_coef))
 
             if optim == GD_ON_U:
                 vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
@@ -76,7 +76,7 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
     init_linestyle = {"SMART": "--", "BI_SMART": "--", "ORTHO": ":", "POWER": "--"} #(0, (3, 1, 1, 1))}
     init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
-    fig, axs = plt.subplots(1, 1, figsize=(6, 4))
+    fig, axs = plt.subplots(1, 1, figsize=(6, 2))
     for init in inits:
         x, y = zip(*sorted(zip(cond[init], np.log10(error_at_optimal_solution[init]))))
         if USE_MOMENTUM:
@@ -96,11 +96,11 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
                            fontsize=FONTSIZE)
 
         # Plot error after using scikit-learn implementation.
-        x, y = zip(*sorted(zip(cond[init], np.log10(error_after_elastic_net[init]))))
-        if USE_MOMENTUM:
-            axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=":", marker="*")
-        else:
-            axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=":", marker="*")
+        # x, y = zip(*sorted(zip(cond[init], np.log10(error_after_elastic_net[init]))))
+        # if USE_MOMENTUM:
+        #     axs.plot(np.array(x) ** 1, y, color=init_colors[init], linestyle=":", marker="*")
+        # else:
+        #     axs.plot(np.array(x) ** 2, y, color=init_colors[init], linestyle=":", marker="*")
 
     ## Optimal error. ###
     S_stacked = np.concatenate([client.S for client in network.clients])
@@ -119,7 +119,8 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
     init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
                           lw=2, label=labels[init]) for init in inits]
     if error_optimal != 0:
-        init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
+        init_legend.append(Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2,
+                                  label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
     init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, label="Exact solution"))
     init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent"))
 
@@ -128,7 +129,7 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
     title = f"../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[DATASET_NAME] != 0:
-        title += f"_eps{NOISE[DATASET_NAME]}"
+        title += f"_eps{noise}"
     if algo.l1_coef != 0:
         title += f"_lasso{l1_coef}"
     if algo.l2_coef != 0:
@@ -143,7 +144,8 @@ def plot_errors_vs_condition_number(l1_coef: int,  l2_coef: int,  nuc_coef: int)
 if __name__ == '__main__':
 
     # Without noise.
-    plot_errors_vs_condition_number(0, 0.0001, 0)
+    plot_errors_vs_condition_number(0, 0, 0, 0)
+    plot_errors_vs_condition_number(NOISE["synth"], 0, 0, 0)
     # plot_errors_vs_condition_number(10**-3, 0, 0)
     # plot_errors_vs_condition_number(0, 10 ** -3, 0)
     # plot_errors_vs_condition_number(10 ** -3, 10 ** -3, 0)

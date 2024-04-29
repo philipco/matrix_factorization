@@ -19,17 +19,19 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-DATASET_NAME = "mnist"
+DATASET_NAME = "synth"
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
+# USE_MOMENTUM = True
 
 FONTSIZE=9
 
 if __name__ == '__main__':
 
+    print(f"= {DATASET_NAME} =")
     network = Network(NB_CLIENTS[DATASET_NAME], 100, 100, RANK_S[DATASET_NAME],
-                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME)
+                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME, m=20)
 
     optimization = GD_ON_U
     errors = {}
@@ -71,25 +73,23 @@ if __name__ == '__main__':
 
     for init in inits:
         print(f"\t== {init} ==")
-        algo = optimization(network, NB_EPOCHS[DATASET_NAME], 0.01, init, L1_COEF, L2_COEF, NUC_COEF)
-        errors[init] = algo.run()
-        error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
-        print(f"{init}\terror min:", errors[init][-1])
+        for use_momentum in [False, True]:
+            print(f"\t===> Use momentum: {use_momentum}")
+            algo = optimization(network, NB_EPOCHS[DATASET_NAME], 0.01, init, L1_COEF, L2_COEF, NUC_COEF,
+                                use_momentum=use_momentum)
+            key = init + "_momentum" if use_momentum else init
+            errors[key] = algo.run()
+            error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
+            print(f"{init}\terror min:", errors[init][-1])
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
-
-    optim_colors = {"UV": COLORS[0], "V": COLORS[1], "U": COLORS[2]}
-    init_linestyle = {"RANDOM": "-.", "SMART": "-", "BI_SMART": "--", "ORTHO": ":"}
-
-    COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
-
-    init_linestyle = {"SMART": "--", "BI_SMART": "--", "ORTHO": ":", "POWER": "--"}  # (0, (3, 1, 1, 1))}
     init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
     fig, axs = plt.subplots(1, 1, figsize=(3, 4))
 
     for init in inits:
-        axs.plot(np.log10(errors[init]), color=init_colors[init], linestyle=init_linestyle[init])
+        axs.plot(np.log10(errors[init]), color=init_colors[init], linestyle="--")
+        axs.plot(np.log10(errors[init + "_momentum"]), color=init_colors[init], linestyle="-.")
         x = np.linspace(0, len(errors[init]), num=10)
         z = [np.log10(error_at_optimal_solution[init]) for i in x]
         axs.plot(x, z, color=init_colors[init], marker="*")
@@ -113,7 +113,8 @@ if __name__ == '__main__':
             Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
     init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, marker="*",
                               label="Exact solution"))
-    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent"))
+    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent (GD)"))
+    init_legend.append(Line2D([0], [0], linestyle="-.", color='black', lw=2, label="GD w. momentum"))
 
     if DATASET_NAME == "synth":
         l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)

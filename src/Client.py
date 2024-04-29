@@ -14,9 +14,10 @@ from src.utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, 
 class Network:
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", seed=1234):
+                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=1234):
         super().__init__()
         self.dataset_name = dataset_name
+        self.m = m
         if dataset_name == "synth":
             self.nb_clients = nb_clients
             self.dim = dim
