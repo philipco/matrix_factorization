@@ -30,7 +30,7 @@ FONTSIZE=9
 if __name__ == '__main__':
 
     print(f"= {DATASET_NAME} =")
-    network = Network(NB_CLIENTS[DATASET_NAME], 100, 100, RANK_S[DATASET_NAME],
+    network = Network(NB_CLIENTS[DATASET_NAME], 200, 200, RANK_S[DATASET_NAME],
                       LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME, m=20)
 
     optimization = GD_ON_U
@@ -120,6 +120,7 @@ if __name__ == '__main__':
         l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
         axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
+    axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
     title = f"../pictures/{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[DATASET_NAME] != 0:
         title += f"_eps{NOISE[DATASET_NAME]}"

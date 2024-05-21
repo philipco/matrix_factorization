@@ -24,7 +24,9 @@ class AbstractGradientDescent(AbstractAlgorithm):
         # MOMEMTUM
         self.use_momentum = use_momentum
         if self.sigma_max is not None:
-            self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
+            kappa = self.sigma_max ** 2 / self.sigma_min ** 2
+            self.momentum = 0.95 #(np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)  # 1 / self.largest_sv_S**2
+            # self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
         else:
             self.momentum = 1 / self.largest_sv_S**2
 
@@ -130,7 +132,7 @@ class GD(AbstractGradientDescent):
     def variable_optimization(self):
         return "U,V"
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, it: int):
         gradV = []
         Vold = []
         for client in self.network.clients:
@@ -152,7 +154,7 @@ class AlternateGD(AbstractGradientDescent):
     def variable_optimization(self):
         return "U,V"
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, it: int):
         gradV = []
         Vold = []
         for client in self.network.clients:
@@ -173,7 +175,7 @@ class GD_ON_V(AbstractGradientDescent):
     def variable_optimization(self):
         return "V"
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, it: int):
         gradV = []
         Vold = []
         for client in self.network.clients:
@@ -194,15 +196,16 @@ class GD_ON_U(AbstractGradientDescent):
     def variable_optimization(self):
         return "U"
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, it: int):
         for client in self.network.clients:
             if self.use_momentum:
                 client.U_past = client.U
                 client.U = client.U_half - self.step_size * client.local_grad_wrt_U(client.U_half, self.l1_coef,
-                                                                                    self.l2_coef)
-                client.U_half = client.U + self.momentum * (client.U - client.U_past)
+                                                                                    self.l2_coef, self.nuc_coef)
+                client.U_half = client.U + (client.U - client.U_past) * it / (it + 3)
             else:
-                client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef, self.nuc_coef)
+                client.U = client.U - self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef,
+                                                                               self.nuc_coef)
         self.errors.append(self.__F__())
 
 
@@ -214,7 +217,7 @@ class DGDLocal(AbstractGradientDescent):
     def variable_optimization(self):
         return "U,V"
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, it: int):
         gradV = []
         Vold = []
         for client in self.network.clients:

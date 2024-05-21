@@ -45,18 +45,31 @@ def random_MF_initialization(network: Network):
 
 def smart_MF_initialization_for_GD_on_U(network: Network):
 
-    # V = np.zeros((network.dim, network.plunging_dimension))
-    Phi_V = [generate_gaussian_matrix(client.nb_samples, client.plunging_dimension, 1) for client in network.clients]
-
     S = np.concatenate([client.S for client in network.clients])
-    Phi = np.concatenate(Phi_V)
 
-    # We compute (S.T @ S)^alpha @ S.T @ Phi in a distributed way to not compute and store a dxd matrix.
+    kappa_inf = np.inf
+    for i in range(network.m):
+        Phi_V = [generate_gaussian_matrix(client.nb_samples, client.plunging_dimension, 1) for client in
+                 network.clients]
+        V_clients = []
+        # We compute (S.T @ S)^alpha @ S.T @ Phi in a distributed way to not compute and store a dxd matrix.
+        for i in range(network.nb_clients):
+            client = network.clients[i]
+            V_clients.append(client.S.T @ Phi_V[i])
+
+        V_sampled = np.sum([v for v in V_clients], axis=0)
+        singular_values = compute_svd(V_sampled)
+        sigma_max = singular_values[0]
+        sigma_min = singular_values[network.rank_S - 1] if hasattr(network, "rank_S") else singular_values[-1]
+
+        if kappa_inf > sigma_max / sigma_min:
+            V = V_sampled
+            kappa_inf = sigma_max / sigma_min
+            Phi = np.concatenate(Phi_V)
+
     for i in range(network.nb_clients):
-        client = network.clients[i]
-        client.V = client.S.T @ Phi_V[i]
+        network.clients[i].V = V
 
-    V = np.sum([client.V for client in network.clients], axis=0)
     for a in range(network.power):
         for i in range(network.nb_clients):
             client = network.clients[i]
