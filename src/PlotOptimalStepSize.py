@@ -4,7 +4,7 @@ Created by Constantin Philippenko, 11th December 2023.
 import numpy as np
 from matplotlib import pyplot as plt
 
-from src.Client import Network
+from src.Network import Network
 from src.algo.GradientDescent import GD_ON_V
 
 import matplotlib

@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-from src.Client import Network
+from src.Network import Network
 from src.algo.GradientDescent import AlternateGD, GD_ON_U, GD_ON_V, GD
 
 import matplotlib

@@ -6,7 +6,7 @@ import scipy
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-from src.Client import Network
+from src.Network import Network
 from src.algo.GradientDescent import GD_ON_U, GD_ON_V
 
 import matplotlib
@@ -76,7 +76,7 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
     init_linestyle = {"SMART": "--", "BI_SMART": "--", "ORTHO": ":", "POWER": "--"} #(0, (3, 1, 1, 1))}
     init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
-    fig, axs = plt.subplots(1, 1, figsize=(6, 3))
+    fig, axs = plt.subplots(1, 1, figsize=(6, 2.25))
     for init in inits:
         x, y = zip(*sorted(zip(cond[init], np.log10(error_at_optimal_solution[init]))))
         if USE_MOMENTUM:
