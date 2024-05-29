@@ -3,10 +3,9 @@ Created by Constantin Philippenko, 15th January 2024.
 """
 
 from abc import ABC, abstractmethod
-
 import numpy as np
 
-from src.Client import Network
+from src.Network import Network
 
 
 class AbstractAlgorithm(ABC):

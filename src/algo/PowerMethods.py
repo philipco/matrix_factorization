@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 
-from src.Client import Network
+from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import random_power_iteration
 

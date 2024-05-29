@@ -5,7 +5,7 @@ from scipy.linalg import eigh
 from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
-from src.Client import Network
+from src.Network import Network
 from src.MatrixUtilities import power, compute_svd
 
 SINGULARVALUE_CLIP = 0
@@ -14,6 +14,10 @@ SINGULARVALUE_CLIP = 0
 def generate_gaussian_matrix(n, d, std=1):
     gaussian_matrix = np.random.normal(0, std, size=(n, d))
     return gaussian_matrix
+
+def generate_sparse_random_matrix(n, d):
+    sparse_random_matrix = np.random.choice(np.array([-np.sqrt(3), 0, np.sqrt(3)]), p=[1/6, 2/3, 1/6], size=(n, d))
+    return sparse_random_matrix
 
 def random_power_iteration(network: Network):
     plunging_dimension = network.plunging_dimension
@@ -51,6 +55,8 @@ def smart_MF_initialization_for_GD_on_U(network: Network):
     for i in range(network.m):
         Phi_V = [generate_gaussian_matrix(client.nb_samples, client.plunging_dimension, 1) for client in
                  network.clients]
+        # Phi_V = [generate_sparse_random_matrix(client.nb_samples, client.plunging_dimension) for client in
+        #          network.clients]
         V_clients = []
         # We compute (S.T @ S)^alpha @ S.T @ Phi in a distributed way to not compute and store a dxd matrix.
         for i in range(network.nb_clients):
