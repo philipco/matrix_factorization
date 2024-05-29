@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.sparse.linalg import svds
 
-from src.Client import Network
+from src.Network import Network
 
 import matplotlib
 

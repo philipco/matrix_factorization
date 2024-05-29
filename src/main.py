@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
-from src.Client import Network
+from src.Network import Network
 from src.algo.GradientDescent import AlternateGD, GD_ON_U, GD_ON_V, GD
 
 import matplotlib
@@ -24,6 +24,7 @@ NB_EPOCHS = 20
 NB_CLIENTS = 10
 L1_COEF = 0
 L2_COEF = 0*10**-6
+NUC_COEF = 10**-3
 
 NOISE = 0*10**-6
 
@@ -35,20 +36,21 @@ if __name__ == '__main__':
 
     optimizations = {"U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["SMART", "BI_SMART", "ORTHO", "POWER"]
+    inits = ["SMART", "POWER"]
 
-    # RANDOM initialization for optimization on U,V
-    algo = DistributedPowerMethod(network, NB_EPOCHS // 10, 0.01, "RANDOM", 10)
-    errors["UV"]["RANDOM"] = algo.run()
-    print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
+    # # RANDOM initialization for optimization on U,V
+    # algo = DistributedPowerMethod(network, NB_EPOCHS // 10, 0.01, "RANDOM", 10)
+    # errors["UV"]["RANDOM"] = algo.run()
+    # print(f"{algo.init_type}\terror min:", errors["UV"]["RANDOM"][-1])
 
     for key in optimizations.keys():
         print(f"=== {key} ===")
         for init in inits:
             print(f"\t== {init} ==")
-            algo = optimizations[key](network, NB_EPOCHS, 0.01, init, l1_coef=L1_COEF, l2_coef=L2_COEF)
+            algo = optimizations[key](network, NB_EPOCHS, 0.01, init, l1_coef=L1_COEF, l2_coef=L2_COEF,
+                                      nuc_coef=NUC_COEF)
             errors[key][init] = algo.run()
-            # error_exact = algo.exact_solution()
+            algo.compute_exact_solution(0, 0, 0)
             print(f"{init}\terror min:", errors[key][init][-1])
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -63,9 +65,8 @@ if __name__ == '__main__':
         for init in inits:
             axs.plot(np.log10(errors[key][init]), color=optim_colors[key], linestyle=init_linestyle[init])
 
-    gd_legend = [Line2D([0], [0], color=COLORS[0], lw=2, label='gd on U, V'),
-                   Line2D([0], [0], color=COLORS[1], lw=2, label='gd on V'),
-                   Line2D([0], [0], color=COLORS[2], lw=2, label='gd on U')]
+    gd_legend = [Line2D([0], [0], color=COLORS[0], lw=2, label='GD on (U, V)'),
+                   Line2D([0], [0], color=COLORS[2], lw=2, label='GD on U')]
 
     init_legend = [Line2D([0], [0], linestyle="-.", color="black", lw=2, label='random'),
                    Line2D([0], [0], color="black", lw=2, label='smart init'),

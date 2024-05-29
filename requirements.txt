@@ -1,5 +1,11 @@
 numpy
 matplotlib
+scikit-learn
 scikit-image
 scipy
+numba
 networkx # graph visualization
+
+torch
+torchvision
+pandas
