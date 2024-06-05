@@ -30,15 +30,17 @@ FONTSIZE=9
 if __name__ == '__main__':
 
     print(f"= {DATASET_NAME} =")
-    network = Network(NB_CLIENTS[DATASET_NAME], 200, 200, RANK_S[DATASET_NAME],
-                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME, m=20)
+    network = Network(NB_CLIENTS[DATASET_NAME], 60, 60, RANK_S[DATASET_NAME],
+                      60, LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME],
+                      dataset_name=DATASET_NAME, m=20)
 
     optimization = GD_ON_U
     errors = {}
     error_at_optimal_solution = {}
+    error_back_to_complete_space = {}
 
     labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
-    inits = ["SMART", "POWER"]
+    inits = ["SMART"] #, "POWER"]
 
     # RANDOM initialization for optimization on U,V
     # algo = GD_ON_U(network, NB_EPOCHS, 0.01, "POWER")
@@ -80,6 +82,7 @@ if __name__ == '__main__':
             key = init + "_momentum" if use_momentum else init
             errors[key] = algo.run()
             error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
+            error_back_to_complete_space[init] = algo.back_to_full_space(L1_COEF, L2_COEF, NUC_COEF)
             print(f"{init}\terror min:", errors[init][-1])
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -95,13 +98,13 @@ if __name__ == '__main__':
         axs.plot(x, z, color=init_colors[init], marker="*")
 
     ## Optimal error. ###
-    S_stacked = np.concatenate([client.S for client in network.clients])
+    S_stacked = np.concatenate([client.uncompressed_S for client in network.clients])
     _, singular_values, _ = scipy.linalg.svd(S_stacked)
 
     error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
                                                                          min(np.sum(
                                                                              [c.nb_samples for c in network.clients]),
-                                                                             network.dim))])
+                                                                             network.sub_dimension))])
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in errors["SMART"]]
         axs.plot(z, color=COLORS[2], lw=3)

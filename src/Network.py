@@ -9,16 +9,18 @@ from skimage import data
 from scipy.stats import ortho_group
 
 from src.Client import ClientRealData, Client
+from src.MatrixUtilities import generate_low_rank_matrix
 from src.utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, get_w8a
 
 
 class Network:
 
-    def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=1234):
+    def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, sub_dimension: int,
+                 plunging_dimension: int, noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=1234):
         super().__init__()
         self.dataset_name = dataset_name
         self.m = m
+        self.sub_dimension = sub_dimension
         if dataset_name == "synth":
             self.nb_clients = nb_clients
             self.dim = dim
@@ -64,7 +66,7 @@ class Network:
             self.clients = []
             for c_id in range(self.nb_clients):
                 self.clients.append(ClientRealData(c_id, self.dim, dataset[c_id].shape[0], dataset[c_id],
-                                                   self.plunging_dimension, missing_value, noise))
+                                                   self.sub_dimension, self.plunging_dimension, missing_value, noise))
             self.W = self.generate_neighborood()
 
     def plot_graph_connectivity(self):
@@ -96,24 +98,16 @@ class Network:
     def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
         np.random.seed(151515)
         clients = []
-        U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S, nb_samples)
+        U_star, D_star, V_star = generate_low_rank_matrix(self.nb_clients, self.dim, rank_S, nb_samples)
         S = U_star @ D_star @ V_star.T
+        # S = np.concatenate([S for i in range(self.nb_clients)])
 
         for c_id in range(self.nb_clients):
-            S_i = S[c_id * nb_samples: (c_id + 1) * nb_samples]
-            clients.append(Client(c_id, self.dim, nb_samples, S_i, self.plunging_dimension,
+            S_i = S[0 * nb_samples: (0 + 1) * nb_samples]
+            clients.append(Client(c_id, self.dim, nb_samples, S_i, self.sub_dimension, self.plunging_dimension,
                                   missing_value, noise))
+        self.ratio_norm = np.sum([np.linalg.norm(c.S, ord="fro")**2 for c in clients]) / np.linalg.norm(S, ord="fro")**2
+        print("C=", self.ratio_norm)
         return clients
 
-    def generate_low_rank_matrix(self, rank: int, nb_samples):
-        assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
 
-        V_star = ortho_group.rvs(dim=self.dim)[:rank].T
-        U_star = ortho_group.rvs(dim=nb_samples * self.nb_clients)[:rank].T
-        D_star = np.zeros((rank, rank))
-
-        D_star[0, 0] = 1
-        for k in range(1, rank):
-            D_star[k, k] = 1
-
-        return U_star, D_star, V_star

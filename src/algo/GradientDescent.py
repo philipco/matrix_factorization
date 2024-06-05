@@ -120,7 +120,17 @@ class AbstractGradientDescent(AbstractAlgorithm):
                 return 10
             for client in self.network.clients:
                 client.V = sum_S_Ui @ sum_UUinv
-            error += client.loss(client.U, client.V, 0, l2_coef)
+            error += client.loss(client.U, client.V, 0, l2_coef, 0)
+        return error
+
+    def back_to_full_space(self, l1_coef, l2_coef, nuc_coef):
+        error = 0
+        all_V = []
+        for client in self.network.clients:
+            reg = LinearRegression(fit_intercept=False).fit(client.U, client.uncompressed_S)
+            V = reg.coef_
+            all_V.append(V)
+            error += client.loss(client.U, V, 0, l2_coef, 0, uncompressed=True)
         return error
 
 

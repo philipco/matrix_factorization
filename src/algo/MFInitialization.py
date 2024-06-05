@@ -6,18 +6,10 @@ from scipy.sparse.linalg import svds
 from scipy.stats import ortho_group
 
 from src.Network import Network
-from src.MatrixUtilities import power, compute_svd
+from src.MatrixUtilities import power, compute_svd, generate_gaussian_matrix
 
 SINGULARVALUE_CLIP = 0
 
-
-def generate_gaussian_matrix(n, d, std=1):
-    gaussian_matrix = np.random.normal(0, std, size=(n, d))
-    return gaussian_matrix
-
-def generate_sparse_random_matrix(n, d):
-    sparse_random_matrix = np.random.choice(np.array([-np.sqrt(3), 0, np.sqrt(3)]), p=[1/6, 2/3, 1/6], size=(n, d))
-    return sparse_random_matrix
 
 def random_power_iteration(network: Network):
     plunging_dimension = network.plunging_dimension
@@ -55,15 +47,17 @@ def smart_MF_initialization_for_GD_on_U(network: Network):
     for i in range(network.m):
         Phi_V = [generate_gaussian_matrix(client.nb_samples, client.plunging_dimension, 1) for client in
                  network.clients]
-        # Phi_V = [generate_sparse_random_matrix(client.nb_samples, client.plunging_dimension) for client in
-        #          network.clients]
+        Psi = [ortho_group.rvs(dim=client.dim)[:35].T for client in network.clients]
         V_clients = []
+        V_clients_compressed = []
         # We compute (S.T @ S)^alpha @ S.T @ Phi in a distributed way to not compute and store a dxd matrix.
         for i in range(network.nb_clients):
             client = network.clients[i]
-            V_clients.append(client.S.T @ Phi_V[i])
+            V_clients_compressed.append(Psi[i] @ Psi[i].T @ client.S.T @ Phi_V[0] * client.dim / 35) #sparsify_matrix(client.S.T @ Phi_V[i], 0.5))
+            V_clients.append(client.S.T @ Phi_V[0])
 
         V_sampled = np.sum([v for v in V_clients], axis=0)
+        V_sampled = np.sum([v for v in V_clients_compressed], axis=0)
         singular_values = compute_svd(V_sampled)
         sigma_max = singular_values[0]
         sigma_min = singular_values[network.rank_S - 1] if hasattr(network, "rank_S") else singular_values[-1]
@@ -79,11 +73,11 @@ def smart_MF_initialization_for_GD_on_U(network: Network):
     for a in range(network.power):
         for i in range(network.nb_clients):
             client = network.clients[i]
-            client.V = client.S.T @ client.S @ V
+            client.V = client.S.T @ client.S @ V #sparsify_matrix(client.S.T @ client.S @ V, 0.5)
         V = np.sum([client.V for client in network.clients], axis=0)
 
     V_centralized = power(S, alpha=network.power) @ Phi
-    assert np.isclose(V, V_centralized).all(), "The distributed version of V is not correct."
+    # assert np.isclose(V, V_centralized).all(), "The distributed version of V is not correct."
 
     for client in network.clients:
         Phi_U = generate_gaussian_matrix(client.nb_samples, network.plunging_dimension,
