@@ -9,6 +9,7 @@ from skimage import data
 from scipy.stats import ortho_group
 
 from src.Client import ClientRealData, Client
+from src.utilities.MatrixUtilities import generate_low_rank_matrix
 from src.utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, get_w8a
 
 
@@ -96,7 +97,7 @@ class Network:
     def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
         np.random.seed(151515)
         clients = []
-        U_star, D_star, V_star = self.generate_low_rank_matrix(rank_S, nb_samples)
+        U_star, D_star, V_star = generate_low_rank_matrix(self.nb_clients, self.dim, rank_S, nb_samples)
         S = U_star @ D_star @ V_star.T
 
         for c_id in range(self.nb_clients):
@@ -104,16 +105,3 @@ class Network:
             clients.append(Client(c_id, self.dim, nb_samples, S_i, self.plunging_dimension,
                                   missing_value, noise))
         return clients
-
-    def generate_low_rank_matrix(self, rank: int, nb_samples):
-        assert rank < self.dim, "The matrix rank must be smaller that the number of features d."
-
-        V_star = ortho_group.rvs(dim=self.dim)[:rank].T
-        U_star = ortho_group.rvs(dim=nb_samples * self.nb_clients)[:rank].T
-        D_star = np.zeros((rank, rank))
-
-        D_star[0, 0] = 1
-        for k in range(1, rank):
-            D_star[k, k] = 1
-
-        return U_star, D_star, V_star

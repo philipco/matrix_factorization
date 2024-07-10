@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Network import Network
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 
@@ -65,10 +65,7 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
             error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef, nuc_coef))
             # error_after_elastic_net[init].append(algo.elastic_net(l1_coef, l2_coef))
 
-            if optim == GD_ON_U:
-                vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
-            elif optim == GD_ON_V:
-                vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].V)])
+            vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]

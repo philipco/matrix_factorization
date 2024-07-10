@@ -6,6 +6,7 @@ from abc import abstractmethod
 import scipy
 from sklearn.linear_model import ElasticNet, LinearRegression, Ridge, SGDRegressor
 
+from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
 
@@ -159,26 +160,6 @@ class AlternateGD(AbstractGradientDescent):
         Vold = []
         for client in self.network.clients:
             client.U -= self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
-            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
-            Vold.append(client.V)
-        for client in self.network.clients:
-            client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
-                        - self.step_size * gradV[client.id])
-        self.errors.append(self.__F__())
-
-class GD_ON_V(AbstractGradientDescent):
-
-    def name(self):
-        return "GD on V"
-
-    def variable_optimization(self):
-        return "V"
-
-    def __epoch_update__(self, it: int):
-        gradV = []
-        Vold = []
-        for client in self.network.clients:
             gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
             Vold.append(client.V)
         for client in self.network.clients:

@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from src.Network import Network
-from src.algo.GradientDescent import GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 matplotlib.rcParams.update({
@@ -32,8 +32,7 @@ if __name__ == '__main__':
 
     network = Network(NB_CLIENTS, 100, 100, 5, 5)
 
-    # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
-    optim = GD_ON_V
+    optim = GD_ON_U
     step_size_factors = [0.125, 0.25, 0.5, 1, 2, 4, 8]
 
     errors = {}

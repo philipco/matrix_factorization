@@ -9,7 +9,7 @@ from src.Network import Network
 
 import matplotlib
 
-from src.MatrixUtilities import orth
+from src.utilities.MatrixUtilities import orth
 from src.algo.MFInitialization import generate_gaussian_matrix
 
 matplotlib.rcParams.update({

@@ -7,8 +7,8 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Network import Network
-from src.MatrixUtilities import power
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.utilities.MatrixUtilities import power
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 

@@ -1,6 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
 """
+import argparse
+
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
@@ -19,7 +21,6 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-DATASET_NAME = "synth"
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
@@ -29,9 +30,19 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    print(f"= {DATASET_NAME} =")
-    network = Network(NB_CLIENTS[DATASET_NAME], 200, 200, RANK_S[DATASET_NAME],
-                      LATENT_DIMENSION[DATASET_NAME], noise=NOISE[DATASET_NAME], dataset_name=DATASET_NAME, m=20)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        help="Dataset name",
+        required=True,
+    )
+    args = parser.parse_args()
+    dataset_name = args.dataset_name
+
+    print(f"= {dataset_name} =")
+    network = Network(NB_CLIENTS[dataset_name], 200, 200, RANK_S[dataset_name],
+                      LATENT_DIMENSION[dataset_name], noise=NOISE[dataset_name], dataset_name=dataset_name, m=20)
 
     optimization = GD_ON_U
     errors = {}
@@ -75,7 +86,7 @@ if __name__ == '__main__':
         print(f"\t== {init} ==")
         for use_momentum in [False, True]:
             print(f"\t===> Use momentum: {use_momentum}")
-            algo = optimization(network, NB_EPOCHS[DATASET_NAME], 0.01, init, L1_COEF, L2_COEF, NUC_COEF,
+            algo = optimization(network, NB_EPOCHS[dataset_name], 0.01, init, L1_COEF, L2_COEF, NUC_COEF,
                                 use_momentum=use_momentum)
             key = init + "_momentum" if use_momentum else init
             errors[key] = algo.run()
@@ -116,14 +127,14 @@ if __name__ == '__main__':
     init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent (GD)"))
     init_legend.append(Line2D([0], [0], linestyle="-.", color='black', lw=2, label="GD w. momentum"))
 
-    if DATASET_NAME == "synth":
+    if dataset_name == "synth":
         l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
         axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
     axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
-    title = f"../pictures/{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
-    if NOISE[DATASET_NAME] != 0:
-        title += f"_eps{NOISE[DATASET_NAME]}"
+    title = f"../pictures/{dataset_name}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    if NOISE[dataset_name] != 0:
+        title += f"_eps{NOISE[dataset_name]}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:

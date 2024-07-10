@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from src.Network import Network
-from src.MatrixUtilities import compute_svd
+from src.utilities.MatrixUtilities import compute_svd
 from src.utilities.data.DatasetsSettings import *
 
 import matplotlib

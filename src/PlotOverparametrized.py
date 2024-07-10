@@ -30,7 +30,6 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
     optim = GD_ON_U
     overparametrization = [0,1,2,4,8]
 

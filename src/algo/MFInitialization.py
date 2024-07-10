@@ -1,19 +1,11 @@
 import numpy as np
-from matplotlib import pyplot as plt
-from numpy.linalg import svd
-from scipy.linalg import eigh
 from scipy.sparse.linalg import svds
-from scipy.stats import ortho_group
 
-from src.Client import Network
-from src.MatrixUtilities import power, compute_svd
+from src.Network import Network
+from src.utilities.MatrixUtilities import power, compute_svd, generate_gaussian_matrix
 
 SINGULARVALUE_CLIP = 0
 
-
-def generate_gaussian_matrix(n, d, std=1):
-    gaussian_matrix = np.random.normal(0, std, size=(n, d))
-    return gaussian_matrix
 
 def random_power_iteration(network: Network):
     plunging_dimension = network.plunging_dimension

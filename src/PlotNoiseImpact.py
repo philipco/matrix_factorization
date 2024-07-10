@@ -8,7 +8,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
 from src.Network import Network
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 
