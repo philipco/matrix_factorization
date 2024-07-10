@@ -6,7 +6,6 @@ import networkx as nx
 from matplotlib import pyplot as plt
 import numpy as np
 from skimage import data
-from scipy.stats import ortho_group
 
 from src.Client import ClientRealData, Client
 from src.utilities.MatrixUtilities import generate_low_rank_matrix

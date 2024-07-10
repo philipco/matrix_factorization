@@ -11,7 +11,6 @@ from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
 
 class AbstractGradientDescent(AbstractAlgorithm):
-
     def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
                  nuc_coef: int = 0, use_momentum: bool = False) -> None:
         super().__init__(network, nb_epoch, rho, init_type)
@@ -49,10 +48,10 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
     def __initialization__(self):
         # np.random.seed(42)
-        if self.init_type == "SMART" and self.variable_optimization() == "U":
+        if self.init_type == "SMART":
             self.network.power = 0
             self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
-        elif self.init_type == "POWER" and self.variable_optimization() == "U":
+        elif self.init_type == "POWER":
             self.network.power = 1
             self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
         elif self.init_type == "RANDOM":
@@ -99,29 +98,16 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
     def compute_exact_solution(self, l1_coef, l2_coef, nuc_coef):
         error = 0
-        if self.variable_optimization() == "U":
-            V = self.network.clients[0].V_0  # Clients share the same V.
-            VV = V.T @ V + + l2_coef * np.identity(V.shape[1])
-            try:
-                VVinv = scipy.linalg.pinvh(VV)
-            except np.linalg.LinAlgError:
-                return None
-            for client in self.network.clients:
-                SV = client.S @ V
-                client.U = SV @ VVinv
-                error += client.loss(client.U, client.V, 0, l2_coef, 0)
-        else:
-            sum_S_Ui = np.sum([client.S.T @ client.U_0 for client in self.network.clients], axis=0)
-            sum_UU = np.zeros((self.network.plunging_dimension, self.network.plunging_dimension))
-            for client in self.network.clients:
-                sum_UU += client.U_0.T @ client.U_0
-            try:
-                sum_UUinv = np.linalg.inv(sum_UU + l2_coef * np.identity((self.network.plunging_dimension)))
-            except np.linalg.LinAlgError:
-                return 10
-            for client in self.network.clients:
-                client.V = sum_S_Ui @ sum_UUinv
-            error += client.loss(client.U, client.V, 0, l2_coef)
+        V = self.network.clients[0].V_0  # Clients share the same V.
+        VV = V.T @ V + + l2_coef * np.identity(V.shape[1])
+        try:
+            VVinv = scipy.linalg.pinvh(VV)
+        except np.linalg.LinAlgError:
+            return None
+        for client in self.network.clients:
+            SV = client.S @ V
+            client.U = SV @ VVinv
+            error += client.loss(client.U, client.V, 0, l2_coef, 0)
         return error
 
 

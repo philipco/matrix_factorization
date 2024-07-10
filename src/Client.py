@@ -65,20 +65,6 @@ class Client:
         sign_U = 2 * (U >= 0) - 1
         return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
 
-    def local_grad_wrt_V(self, V, l1_coef, l2_coef):
-        """Gradient of F w.r.t. variable V."""
-        # If there is a missing values, then the gradient is more complex.
-        if not self.mask.all():
-            grad = []
-            for j in range(self.dim):
-                grad_j = np.zeros(self.plunging_dimension)
-                for i in range(self.nb_samples):
-                    if self.mask[i, j]:
-                        grad_j += (self.S[i, j] - self.U[i] @ self.V[j].T) * self.U[i]
-                grad.append(-grad_j)
-            return np.array(grad) + l1_coef * np.sign(V) + l2_coef * V
-        return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * V
-
     def set_initial_U(self, U):
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
