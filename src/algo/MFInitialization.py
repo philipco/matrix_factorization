@@ -1,3 +1,7 @@
+"""
+Created by Constantin Philippenko, 11th December 2023.
+"""
+
 import numpy as np
 from scipy.sparse.linalg import svds
 
@@ -8,6 +12,7 @@ SINGULARVALUE_CLIP = 0
 
 
 def random_power_iteration(network: Network):
+    """Random initialisation of U and V as two Gaussian matrices."""
     plunging_dimension = network.plunging_dimension
     for client in network.clients:
         client.set_initial_U(generate_gaussian_matrix(client.nb_samples, plunging_dimension, 1))
@@ -20,7 +25,8 @@ def random_power_iteration(network: Network):
     return sigma_min, sigma_max
 
 def random_MF_initialization(network: Network):
-    """Implementation of Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
+    """Implementation of the random initialisation of U,V.
+    From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
     Neurips 2021"""
     plunging_dimension = network.plunging_dimension
     S = np.concatenate([client.S for client in network.clients])
@@ -35,7 +41,8 @@ def random_MF_initialization(network: Network):
     return sigma_min, sigma_max
 
 
-def smart_MF_initialization_for_GD_on_U(network: Network):
+def distributed_power_initialization_for_GD_on_U(network: Network):
+    """Implement the distributed power initialisation as presented in our paper."""
 
     S = np.concatenate([client.S for client in network.clients])
 

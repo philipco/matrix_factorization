@@ -36,24 +36,21 @@ class AbstractGradientDescent(AbstractAlgorithm):
         self.nuc_coef = nuc_coef
 
     @abstractmethod
-    def name(self):
-        pass
-
-    @abstractmethod
     def variable_optimization(self):
+        """Returns the variables that are optimized by the algorithm."""
         pass
 
     def __compute_step_size__(self):
+        """Compute the step-size of the gradient step."""
         self.step_size = 1 / (self.sigma_max**2)
 
     def __initialization__(self):
-        # np.random.seed(42)
         if self.init_type == "SMART":
             self.network.power = 0
-            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
+            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
         elif self.init_type == "POWER":
             self.network.power = 1
-            self.sigma_min, self.sigma_max = smart_MF_initialization_for_GD_on_U(self.network)
+            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
         elif self.init_type == "RANDOM":
             self.sigma_min, self.sigma_max = random_MF_initialization(self.network)
         else:
@@ -64,6 +61,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         pass
 
     def __compute_largest_eigenvalues_init__(self):
+        """Compute the largest eigenvalues of the initialized matrices U,V."""
         largest_sv_U = 0
         largest_sv_V = 0
         for client in self.network.clients:
@@ -72,6 +70,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         return (largest_sv_U, largest_sv_V)
 
     def __compute_smallest_eigenvalues_init__(self):
+        """Compute the smallest eigenvalues of the initialized matrices U,V."""
         smallest_sv_U = 0
         smallest_sv_V = 0
         for client in self.network.clients:
@@ -81,6 +80,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         return (smallest_sv_U, smallest_sv_V)
 
     def elastic_net(self, l1_coef, l2_coef):
+        """Perform the Elastic-Net method to find U with fixed V (uses Scikit-learn)."""
         error = 0
         for client in self.network.clients:
             if l1_coef == 0 and l2_coef == 0:
@@ -97,6 +97,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
         return error
 
     def compute_exact_solution(self, l1_coef, l2_coef, nuc_coef):
+        """Compute the exact solution U given V of the optimisation problem."""
         error = 0
         V = self.network.clients[0].V_0  # Clients share the same V.
         VV = V.T @ V + + l2_coef * np.identity(V.shape[1])
@@ -112,7 +113,7 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
 
 class GD(AbstractGradientDescent):
-
+    """Implement the Gradient Descent algorithm to find U,V factorising S."""
     def name(self):
         return "GD"
 
@@ -134,6 +135,9 @@ class GD(AbstractGradientDescent):
         self.errors.append(self.__F__())
 
 class AlternateGD(AbstractGradientDescent):
+    """Implement the Alternate Gradient Descent algorithm to find U,V factorising S.
+    E.g. Jain, P., Netrapalli, P., & Sanghavi, S., 2013. Low-rank matrix completion using alternating
+    minimization"""
 
     def name(self):
         return "Alternate GD"
@@ -156,6 +160,7 @@ class AlternateGD(AbstractGradientDescent):
 
 
 class GD_ON_U(AbstractGradientDescent):
+    """Gradient descent by optimizing only w.r.t. to matrix U."""
 
     def name(self):
         return "GD on U"
@@ -177,7 +182,9 @@ class GD_ON_U(AbstractGradientDescent):
 
 
 class DGDLocal(AbstractGradientDescent):
-
+    """Implement the DGDLocal algorithm
+     From Zhu, Z., Li, Q., Yang, X., Tang, G., & Wakin, M. B., 2019. Distributed low-rank matrix factorization with
+     exact consensus. '"""
     def name(self):
         return "DGD+Local"
 

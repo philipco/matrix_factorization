@@ -7,6 +7,7 @@ from src.algo.MFInitialization import random_power_iteration
 
 
 class DistributedPowerMethod(AbstractAlgorithm):
+    """Implement the distributed power method as presented in our paper."""
 
     def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, local_epoch: int) -> None:
         super().__init__(network, nb_epoch, rho, init_type)
