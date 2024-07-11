@@ -1,8 +1,8 @@
 # In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting
 We present here the code of the experimental parts of the following paper:
 ```
-C. Philippenko, K. Scaman and L. Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting 
-least-squares regression: application to Federated Learning, 2024.
+C. Philippenko, K. Scaman and L. Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated 
+Setting , 2024.
 ```
 
 In this paper, we analyze a distributed algorithm to compute a low-rank matrix factorization on $N$ clients, each 
@@ -29,10 +29,45 @@ theory from optimization can be plugged in.
 3. By sampling several Gaussian matrix $\Phi$, we improve the rate of convergence of the gradient descent. Further, 
 based on random Gaussian matrix theory, it results in an almost surely convergence if we sample $\Phi$ until 
 $\mathbf{V}$ is well conditioned.
-4. 
+
 ## Running experiments
 
 Run the following commands to generate the illustrative figures in the article.
+
+### Figure 3
+
+Condition number on the X-axis, the logarithm of the loss F after 1000 local iterations on the Y-axis.
+
+Goal: illustrate the impact of the sampled Gaussian matrices Phi on the convergence rate.
+
+
+**Left**: without noise. **Right**: with noise.
+
+<p float="left">
+  <img src="pictures_for_README/convergence_vs_cond_synth_N25_d200_r5_U_eps0.png" alt="Condition number on X-axis, loss 
+on Y-axis, without noise" width="400"/>
+  <img src="pictures_for_README/convergence_vs_cond_synth_N25_d200_r5_U_eps1e-06.png" alt="Condition number on X-axis, 
+loss on Y-axis, with noise" width="400"/>
+</p>
+
+```python3 -m src.plotter_script.PlotErrorVSCond```
+
+### Figure 4
+
+Iteration index on the X-axis, the logarithm of the loss F after 1000 local iterations on the Y-axis.
+
+Goal: illustrate on real-life datasets how the algorithm behaves in practice.
+
+
+**Left to right**: (a) synthethic dataset, (b) w8a, (c) mnist and (d) celeba.
+
+<p float="left">
+  <img src="pictures_for_README/synth_N25_d200_r5_U_eps1e-06.png" alt="synthethic" width="200"/>
+  <img src="pictures_for_README/w8a_N25_d300_r20_U.png" alt="w8a" width="200"/>
+  <img src="pictures_for_README/mnist_N10_d784_r20_U.png" alt="mnist" width="200"/>
+  <img src="pictures_for_README/celeba_N25_d3072_r20_U.png" alt="celeba" width="200"/>
+</p>
+
 
 ```python3 -m src.plotter_script.PlotRealDataset --dataset_name synth```
 
