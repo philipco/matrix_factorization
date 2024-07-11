@@ -1,5 +1,7 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+Plot the theoretical bounds on
 """
 import numpy as np
 import scipy

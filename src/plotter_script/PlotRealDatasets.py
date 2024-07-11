@@ -1,5 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+X-axis: iteration index. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: illustrate on real-life datasets how the algorithm behaves in practice.
 """
 import argparse
 

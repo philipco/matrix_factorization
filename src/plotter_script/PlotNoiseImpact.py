@@ -1,5 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+X-axis: noise level. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: illustrate the impact of noise on the loss.
 """
 import numpy as np
 import scipy
@@ -60,7 +63,7 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
                 kappa = algo_GD.sigma_max / algo_GD.sigma_min
             errors[init].append(algo_GD.run()[-1])
             cond[init].append(algo_GD.sigma_min / algo_GD.sigma_max)
-            error_at_optimal_solution[init].append(algo_GD.compute_exact_solution(l1_coef, l2_coef))
+            error_at_optimal_solution[init].append(algo_GD.compute_exact_solution(l1_coef, l2_coef, 0))
         for optim in related_work:
             kappa = np.inf
             algo = optim(network, NB_EPOCHS // NB_LOCAL_EPOCHS, 0.01, "RANDOM", NB_LOCAL_EPOCHS)
@@ -72,8 +75,8 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
         _, singular_values, _ = scipy.linalg.svd(S_stacked)
 
         error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
-                                                                                 min(nb_clients * network.nb_samples,
-                                                                                     network.dim))])
+                                                                                 min(S_stacked.shape[0],
+                                                                                     S_stacked.shape[1]))])
         errors_optimal.append(error_optimal)
 
 
@@ -132,7 +135,7 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
     axins.set_yticks([])
     axs.indicate_inset_zoom(axins, edgecolor="black")
 
-    title = f"../pictures/convergence_noise_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo_GD.variable_optimization()}"
+    title = f"../../pictures/convergence_noise_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo_GD.variable_optimization()}"
     if l1_coef != 0:
         title += f"_lasso{l1_coef}"
     if l2_coef != 0:
@@ -145,6 +148,3 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
 if __name__ == '__main__':
     plot_noise_impact(NB_CLIENTS, 100, 100, 5, 5, 0, 0)
     plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
-    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 0)
-    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-6)
-    # plot_noise_impact(NB_CLIENTS, 100, 100, 5, 6, 0, 10**-3)

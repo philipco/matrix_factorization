@@ -1,5 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+X-axis: condition number. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: illustrate the impact of the sampled Gaussian matrices Phi on the convergence rate.
 """
 import numpy as np
 import scipy
@@ -124,7 +127,7 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[DATASET_NAME] != 0:
         title += f"_eps{noise}"
     if algo.l1_coef != 0:

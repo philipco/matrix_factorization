@@ -1,5 +1,9 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+X-axis: condition number. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: plot the value of the global loss function for a=0, a=1, for the LocalPower algorithm; plot the theoretical lower
+    bound of the error.
 """
 import numpy as np
 import scipy
@@ -64,7 +68,7 @@ if __name__ == '__main__':
             algo = optim(network, NB_EPOCHS, 0.01, init, use_momentum=False, l1_coef=L1_COEF, l2_coef=L2_COEF)
             errors[init].append(algo.run()[-1])
             cond[init].append(algo.sigma_min / algo.sigma_max)
-            error_at_optimal_solution[init].append(algo.compute_exact_solution(L1_COEF, L2_COEF))
+            error_at_optimal_solution[init].append(algo.compute_exact_solution(L1_COEF, L2_COEF, 0))
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
@@ -97,8 +101,8 @@ if __name__ == '__main__':
     _, singular_values, _ = scipy.linalg.svd(S_stacked)
 
     error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
-                                                                         min(NB_CLIENTS * network.nb_samples,
-                                                                             network.dim))])
+                                                                         min(S_stacked.shape[0],
+                                                                             S_stacked.shape[1]))])
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in cond["SMART"]]
         if USE_MOMENTUM:
@@ -120,7 +124,7 @@ if __name__ == '__main__':
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/related_work_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../../pictures/related_work_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE != 0:
         title += f"_eps{NOISE}"
     if algo.l1_coef != 0:

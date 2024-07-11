@@ -23,7 +23,7 @@ class DistributedPowerMethod(AbstractAlgorithm):
     def __initialization__(self):
         self.sigma_min, self.sigma_max = random_power_iteration(self.network)
 
-    def __epoch_update__(self):
+    def __epoch_update__(self, i: int):
         for k in range(self.local_epoch):
             for client in self.network.clients:
                  client.local_power_iteration()
