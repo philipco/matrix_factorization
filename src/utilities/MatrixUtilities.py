@@ -1,3 +1,9 @@
+"""
+Created by Constantin Philippenko, 10th July 2024.
+
+Utilities function for matrices.
+"""
+
 import numpy as np
 
 from scipy.stats import ortho_group

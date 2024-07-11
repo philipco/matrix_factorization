@@ -1,3 +1,7 @@
+"""
+Created by Constantin Philippenko, 18th January 2024.
+"""
+
 import numpy as np
 import scipy
 

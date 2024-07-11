@@ -13,6 +13,7 @@ from src.utilities.PytorchUtilities import get_mnist, get_celeba, get_real_sim, 
 
 
 class Network:
+    """Create a federated network of clients holding a local dataset."""
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
                  noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=1234):
@@ -68,6 +69,7 @@ class Network:
             self.W = self.generate_neighborood()
 
     def plot_graph_connectivity(self):
+        """Plot the graph connectivity of the clients' network (in the decentralized scenario)."""
         if self.nb_clients == 1:
             return
         # We remove the self connection to avoid loop on the graph.
@@ -79,6 +81,7 @@ class Network:
                     bbox_inches='tight')
 
     def generate_neighborood(self, type: int = "REGULAR"):
+        """Generate a graph to have a decentralized network of clients."""
         if self.nb_clients == 1:
             return np.array([[1]])
         if self.nb_clients == 2:
@@ -94,6 +97,7 @@ class Network:
         return W
 
     def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
+        """Generate each client of the network."""
         np.random.seed(151515)
         clients = []
         U_star, D_star, V_star = generate_low_rank_matrix(self.nb_clients, self.dim, rank_S, nb_samples)

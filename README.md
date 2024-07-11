@@ -63,7 +63,7 @@ If you use this code, please cite the following papers
 ```
 @article{philippenko2024indepth,
   title={In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting},
-  author={Philippenko, Constantin and Scaman, Kevin and Dieuleveut, Aymeric},
+  author={Philippenko, Constantin and Scaman, Kevin and Massoulié, Laurent},
   journal={arXiv e-prints},
   year={2024}
 }
