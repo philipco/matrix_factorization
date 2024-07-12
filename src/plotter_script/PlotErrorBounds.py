@@ -1,5 +1,7 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+Plot the theoretical bounds on
 """
 import numpy as np
 import scipy
@@ -7,8 +9,8 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Network import Network
-from src.MatrixUtilities import power
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.utilities.MatrixUtilities import power
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 

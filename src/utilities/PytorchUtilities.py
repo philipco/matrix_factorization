@@ -1,3 +1,10 @@
+"""
+Created by Constantin Philippenko, 29th May 2024.
+
+Utilities function for PyTorch.
+"""
+
+
 import numpy as np
 from torchvision import datasets, transforms
 from src.utilities.data.CelebaDataset import CelebaDataset

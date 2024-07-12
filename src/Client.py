@@ -8,6 +8,7 @@ from scipy.stats import ortho_group
 
 
 class Client:
+    """Create a client of the federated network with its own local dataset."""
 
     def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, missing_value,
                  noise: int = 0) -> None:
@@ -30,23 +31,28 @@ class Client:
         self.Phi_V = None
 
     def generate_mask(self, missing_value, nb_samples):
+        """Generate a random mask (to simulate missing values)."""
         if missing_value == 0:
             return np.ones((nb_samples, self.dim))
         return np.random.choice([0, 1], size=(nb_samples, self.dim), p=[missing_value, 1 - missing_value])
 
     def regularization_term(self, U, l1_coef, l2_coef, nuc_coef):
+        """Compute the regularization terms (L1, L2 and nuclear)."""
         return (l1_coef * np.linalg.norm(U, ord=1) + l2_coef * np.linalg.norm(U, ord="fro")**2 / 2
                 + nuc_coef * np.linalg.norm(U, ord="nuc"))
 
     def loss(self, U, V, l1_coef, l2_coef, nuc_coef):
+        """Evaluate the local objective function."""
         # S is already multiplied by the mask.
         return (np.linalg.norm(self.S - self.mask * (U @ V.T), ord='fro') ** 2 / 2
                 + self.regularization_term(U, l1_coef, l2_coef, nuc_coef))
 
     def loss_star(self):
-        return np.linalg.norm(self.mask * (self.S_star - self.U @ self.V.T), ord='fro') ** 2 / 2
+        """Evaluate the local objective function but w.r.t. the local true low-rank and unnoised matrix S_*."""
+        return np.linalg.norm(self.S_star - self.U @ self.V.T, ord='fro') ** 2 / 2
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef, nuc_coef):
+        """Compute the local gradient w.r.t. the matrix U."""
         """Gradient of F w.r.t. variable U."""
         nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
         if nuc_coef != 0:
@@ -65,39 +71,30 @@ class Client:
         sign_U = 2 * (U >= 0) - 1
         return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
 
-    def local_grad_wrt_V(self, V, l1_coef, l2_coef):
-        """Gradient of F w.r.t. variable V."""
-        # If there is a missing values, then the gradient is more complex.
-        if not self.mask.all():
-            grad = []
-            for j in range(self.dim):
-                grad_j = np.zeros(self.plunging_dimension)
-                for i in range(self.nb_samples):
-                    if self.mask[i, j]:
-                        grad_j += (self.S[i, j] - self.U[i] @ self.V[j].T) * self.U[i]
-                grad.append(-grad_j)
-            return np.array(grad) + l1_coef * np.sign(V) + l2_coef * V
-        return (self.U @ V.T - self.S).T @ self.U + l1_coef * np.sign(V) + l2_coef * V
-
     def set_initial_U(self, U):
+        """Initialize matrix U."""
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
         self.U, self.U_0, self.U_avg, self.U_past, self.U_half = U, U, U, U, U
 
     def set_U(self, U):
+        """Set matrix U."""
         assert U.shape == (self.nb_samples, self.plunging_dimension), \
             f"U has not the correct size on client {self.id}"
         self.U = U
 
     def set_initial_V(self, V):
+        """Initialize matrix V."""
         assert V.shape == (self.dim, self.plunging_dimension), \
             f"V has not the correct size on client {self.id}"
         self.V, self.V_0, self.V_avg, self.V_past, self.V_half = V, V, V, V, V
 
     def set_V(self, V):
+        """Set matrix U."""
         self.V = V
 
     def local_power_iteration(self):
+        """Run on the local client a step of power iteration."""
         # We update V.
         V = self.S.T @ self.S @ self.V / self.nb_samples
 
@@ -113,7 +110,8 @@ class Client:
 
 
 class ClientRealData(Client):
-
+    """Create a client of the federated network with its own local dataset. The dataset is a real one and not a
+    synthetic one."""
     def __init__(self, id: int, dim: int, nb_samples: int, S_star, plunging_dimension: int, missing_value,
                  noise: int = 0) -> None:
         self.id = id

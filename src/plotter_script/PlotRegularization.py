@@ -30,7 +30,6 @@ FONTSIZE=9
 
 if __name__ == '__main__':
 
-    # optimizations = {"UV": AlternateGD, "V": GD_ON_V, "U": GD_ON_U}
     optim = GD_ON_U
     regularization = [0, 10**-5, 10**-3, 10**-1]
 

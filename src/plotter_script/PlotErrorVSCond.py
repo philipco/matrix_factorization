@@ -1,5 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+
+X-axis: condition number. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: illustrate the impact of the sampled Gaussian matrices Phi on the convergence rate.
 """
 import numpy as np
 import scipy
@@ -7,7 +10,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
 from src.Network import Network
-from src.algo.GradientDescent import GD_ON_U, GD_ON_V
+from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 
@@ -65,10 +68,7 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
             error_at_optimal_solution[init].append(algo.compute_exact_solution(l1_coef, l2_coef, nuc_coef))
             # error_after_elastic_net[init].append(algo.elastic_net(l1_coef, l2_coef))
 
-            if optim == GD_ON_U:
-                vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
-            elif optim == GD_ON_V:
-                vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].V)])
+            vector_values = np.concatenate([vector_values, np.concatenate(network.clients[0].U)])
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
@@ -127,7 +127,7 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
     l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
     axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../../pictures/convergence_vs_cond_{DATASET_NAME}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[DATASET_NAME] != 0:
         title += f"_eps{noise}"
     if algo.l1_coef != 0:

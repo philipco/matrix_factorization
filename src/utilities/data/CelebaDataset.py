@@ -1,3 +1,7 @@
+"""
+Created by Constantin Philippenko, 29th May 2024.
+"""
+
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 from skimage import io
@@ -6,7 +10,8 @@ import torch
 
 
 class CelebaDataset(Dataset):
-    """From https://www.kaggle.com/code/ekansh/celeb-vae."""
+    """The Celeba Dataset.
+    From https://www.kaggle.com/code/ekansh/celeb-vae."""
     def __init__(self, data_dir, partition_file_path, identity_file_path, split, transform):
         self.partition_file = pd.read_csv(partition_file_path)
         self.identity = pd.read_csv(identity_file_path, sep=" ", header=None, names=["Image", "Identity"])
@@ -19,6 +24,7 @@ class CelebaDataset(Dataset):
         return len(self.partition_file_sub)
 
     def __getitem__(self, idx):
+        """Get one element of the dataset based on its index."""
         img_name = os.path.join(self.data_dir,
                                 self.partition_file.iloc[idx, 0])
         image = io.imread(img_name)
@@ -27,5 +33,6 @@ class CelebaDataset(Dataset):
         return image
 
     def __getitem_by_identity__(self, idx):
+        """Get all element of the dataset that corresponds to the same person."""
         indices = self.identity.index[self.identity['Identity'] == idx].tolist()
         return torch.stack([torch.cat([self.__getitem__(i)[j] for j in range(3)], dim=1).view(-1) for i in indices]).numpy()
