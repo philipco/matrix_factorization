@@ -69,13 +69,22 @@ Goal: illustrate on real-life datasets how the algorithm behaves in practice.
 </p>
 
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name synth```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name synth```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name mnist```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name mnist```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name celeba```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name celeba```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name w8a```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name w8a```
+
+### Used dataset.
+
+We use three real datasets: mnist, celeba and w8a that should be stored at this location ```~/GITHUB/DATASETS```.
+
+Mnist is automatically downloaded if it not present. The user should download w8a 
+[here](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/w8a) and celeba 
+[from Kaggle](https://www.kaggle.com/datasets/jessicali9530/celeba-dataset) 
+
 
 ## Requirements
 
