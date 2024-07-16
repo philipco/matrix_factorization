@@ -27,7 +27,6 @@ matplotlib.rcParams.update({
 L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
-# USE_MOMENTUM = True
 
 FONTSIZE=9
 

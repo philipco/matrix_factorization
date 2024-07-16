@@ -1,5 +1,8 @@
 """
 Created by Constantin Philippenko, 11th December 2023.
+X-axis: condition number. Y-axis:  logarithm of the loss F after 1000 local iterations.
+Goal: verify that we take the optimal step-size.
+
 """
 import numpy as np
 from matplotlib import pyplot as plt
@@ -74,7 +77,7 @@ if __name__ == '__main__':
     axs.legend(fontsize=FONTSIZE)
 
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    title = f"../pictures/convergence_vs_stepsize_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../../pictures/convergence_vs_stepsize_N{network.nb_clients}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if algo.l1_coef != 0:
         title += f"_lasso{L1_COEF}"
     if algo.l2_coef != 0:
@@ -82,5 +85,4 @@ if __name__ == '__main__':
     if USE_MOMENTUM:
         title += f"_momentum"
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
-
 
