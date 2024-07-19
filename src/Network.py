@@ -16,10 +16,11 @@ class Network:
     """Create a federated network of clients holding a local dataset."""
 
     def __init__(self, nb_clients: int, nb_samples: int, dim: int, rank_S: int, plunging_dimension: int,
-                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=1234):
+                 noise: int = 0, missing_value: int = 0, dataset_name: str = "synth", m=1, seed=2024):
         super().__init__()
         self.dataset_name = dataset_name
         self.m = m
+        np.random.seed(seed)
         if dataset_name == "synth":
             self.nb_clients = nb_clients
             self.dim = dim
@@ -98,7 +99,6 @@ class Network:
 
     def generate_network_of_clients(self, rank_S: int, missing_value, nb_samples, seed, noise: int = 0):
         """Generate each client of the network."""
-        np.random.seed(151515)
         clients = []
         U_star, D_star, V_star = generate_low_rank_matrix(self.nb_clients, self.dim, rank_S, nb_samples)
         S = U_star @ D_star @ V_star.T
