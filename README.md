@@ -1,7 +1,7 @@
 # In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting
 We present here the code of the experimental parts of the following paper:
 ```
-C. Philippenko, K. Scaman and L. Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated 
+Constantin Philippenko, Kevin Scaman and Laurent Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated 
 Setting , 2024.
 ```
 
