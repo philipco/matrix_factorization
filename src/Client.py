@@ -59,15 +59,6 @@ class Client:
             rank = np.linalg.matrix_rank(U)
             u, s, v = np.linalg.svd(U, full_matrices=False)
             nuclear_grad = u[:,:rank] @ v[:,:rank].T
-        if not self.mask.all():
-            grad = []
-            for i in range(self.nb_samples):
-                grad_i = np.zeros(self.plunging_dimension)
-                for j in range(self.dim):
-                    if self.mask[i,j]:
-                        grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
-                grad.append(-grad_i)
-            return np.array(grad)
         sign_U = 2 * (U >= 0) - 1
         return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
 
@@ -119,7 +110,7 @@ class ClientRealData(Client):
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
         self.mask = self.generate_mask(missing_value, nb_samples)
-        self.S_star = self.S = S_star.astype(np.float64)
+        self.S_star = S_star.astype(np.float64)
         self.S = np.copy(self.S_star)
         if noise != 0:
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))

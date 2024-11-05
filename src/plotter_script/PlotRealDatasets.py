@@ -53,37 +53,6 @@ if __name__ == '__main__':
     labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
     inits = ["SMART", "POWER"]
 
-    # RANDOM initialization for optimization on U,V
-    # algo = GD_ON_U(network, NB_EPOCHS, 0.01, "POWER")
-    # plt.show()
-    # algo.elastic_net()
-    # plt.imshow((network.clients[0].U @ network.clients[0].V.T))
-    # plt.title("Elastic net")
-    # plt.show()
-    # plt.imshow(network.clients[0].U)
-    # plt.title("Elastic net: U")
-    # plt.show()
-    # algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
-    # if dataset_name == 'celeba':
-    #     plt.imshow(np.transpose(network.clients[0].S.reshape(-1,3,32), (0, 2, 1))[:64])
-    #     plt.title("Two first images of client 0")
-    #     plt.show()
-    #     im1 = (network.clients[0].U @ network.clients[0].V.T).reshape(-1,3,32)
-    #     plt.imshow(np.transpose(im1, (0, 2, 1))[:64])
-    #     plt.title("Exact solution for the two first images of client 0", fontsize=FONTSIZE)
-    # plt.imshow(network.clients[0].U @ network.clients[0].V.T)
-    # plt.show()
-    # plt.imshow(network.clients[0].V)
-    # plt.title("V", fontsize=FONTSIZE)
-    # plt.show()
-    # plt.imshow(network.clients[0].U)
-    # plt.title("U", fontsize=FONTSIZE)
-    # plt.show()
-    # algo.run()
-    # plt.imshow(network.clients[0].U @ network.clients[0].V.T)
-    # plt.title("Gradient descent", fontsize=FONTSIZE)
-    # plt.show()
-
     for init in inits:
         print(f"\t== {init} ==")
         for use_momentum in [False, True]:
@@ -134,7 +103,7 @@ if __name__ == '__main__':
         axs.add_artist(l2)
     axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
     axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
-    title = f"../pictures/{dataset_name}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
+    title = f"../../pictures/{dataset_name}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[dataset_name] != 0:
         title += f"_eps{NOISE[dataset_name]}"
     if algo.l1_coef != 0:
