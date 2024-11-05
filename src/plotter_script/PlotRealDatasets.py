@@ -13,6 +13,7 @@ from matplotlib.lines import Line2D
 
 from src.Network import Network
 from src.algo.GradientDescent import GD_ON_U
+from src.utilities.MatrixUtilities import compute_optimal_error
 from src.utilities.data.DatasetsSettings import *
 
 import matplotlib
@@ -57,15 +58,15 @@ if __name__ == '__main__':
         print(f"\t== {init} ==")
         for use_momentum in [False, True]:
             print(f"\t===> Use momentum: {use_momentum}")
-            algo = optimization(network, NB_EPOCHS[dataset_name], 0.01, init, L1_COEF, L2_COEF, NUC_COEF,
+            algo = optimization(network, NB_EPOCHS[dataset_name], init, L1_COEF, L2_COEF, NUC_COEF,
                                 use_momentum=use_momentum)
             key = init + "_momentum" if use_momentum else init
             errors[key] = algo.run()
             error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
             print(f"{init}\terror min:", errors[init][-1])
 
-    COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
-    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
+    COLORS = ["tab:blue", "tab:brown", "tab:green"]
+    init_colors = {"SMART": COLORS[0], "POWER": COLORS[1]}
 
     fig, axs = plt.subplots(1, 1, figsize=(3, 4))
 
@@ -77,13 +78,10 @@ if __name__ == '__main__':
         axs.plot(x, z, color=init_colors[init], marker="*")
 
     ## Optimal error. ###
-    S_stacked = np.concatenate([client.S for client in network.clients])
-    _, singular_values, _ = scipy.linalg.svd(S_stacked)
+    error_optimal = compute_optimal_error([client.S for client in network.clients],
+                                          [c.nb_samples for c in network.clients], network.dim,
+                                          network.plunging_dimension)
 
-    error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(network.plunging_dimension + 1,
-                                                                         min(np.sum(
-                                                                             [c.nb_samples for c in network.clients]),
-                                                                             network.dim))])
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in errors["SMART"]]
         axs.plot(z, color=COLORS[2], lw=3)

@@ -5,6 +5,7 @@ Utilities function for matrices.
 """
 
 import numpy as np
+import scipy
 
 from scipy.stats import ortho_group
 
@@ -46,3 +47,12 @@ def power(A, alpha):
     for k in range(alpha):
         Apower = A.T @ A @ Apower
     return Apower @ A.T
+
+
+def compute_optimal_error(all_S, nb_samples_by_clients, dim, plunging_dimension):
+    S_stacked = np.concatenate(all_S)
+    _, singular_values, _ = scipy.linalg.svd(S_stacked)
+
+    error_optimal = 0.5 * np.sum([singular_values[i] ** 2 for i in range(plunging_dimension + 1,
+                                                                         min(np.sum(nb_samples_by_clients), dim))])
+    return error_optimal

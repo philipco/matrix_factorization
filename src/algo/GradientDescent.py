@@ -11,9 +11,9 @@ from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
 
 class AbstractGradientDescent(AbstractAlgorithm):
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
+    def __init__(self, network: Network, nb_epoch: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
                  nuc_coef: int = 0, use_momentum: bool = False) -> None:
-        super().__init__(network, nb_epoch, rho, init_type)
+        super().__init__(network, nb_epoch, init_type)
 
         self.sigma_max, self.sigma_min = None, None
 
@@ -122,16 +122,11 @@ class GD(AbstractGradientDescent):
 
     def __epoch_update__(self, it: int):
         gradV = []
-        Vold = []
         for client in self.network.clients:
-            gradU = self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
-            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
+            gradU = client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef, self.nuc_coef)
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef, self.nuc_coef))
             client.U -= self.step_size * gradU
-            Vold.append(client.V)
-        for client in self.network.clients:
-            client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
-                        - self.step_size * gradV[client.id])
+        client.V -= self.step_size * np.mean(gradV)
         self.errors.append(self.__F__())
 
 class AlternateGD(AbstractGradientDescent):

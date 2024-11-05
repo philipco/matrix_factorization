@@ -12,12 +12,11 @@ from src.Network import Network
 class AbstractAlgorithm(ABC):
     """Abstract class to define any algorithm to do matrix factorisation."""
 
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str) -> None:
+    def __init__(self, network: Network, nb_epoch: int, init_type: str) -> None:
         self.network = network
         self.init_type = init_type
         self.nb_clients = network.nb_clients
         self.nb_epoch = nb_epoch
-        self.rho = rho
 
         self.errors = []
 
