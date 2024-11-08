@@ -64,7 +64,7 @@ if __name__ == '__main__':
     inits = ["power0", "power1"]
     related_work = {"Alternate GD": AlternateGD, "GD": GD}
 
-    datasets = ["synth"]
+    datasets = ["synth", "w8a", "mnist", "celeba"]
     errors = {name: {} for name in datasets}
     error_at_optimal_solution = {name: {} for name in datasets}
     error_optimal = {}
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
         print(f"= {dataset_name} =")
         # NB_CLIENTS[dataset_name]
-        network = Network(1, 200, 200, RANK_S[dataset_name],
+        network = Network(NB_CLIENTS[dataset_name], 200, 200, RANK_S[dataset_name],
                           LATENT_DIMENSION[dataset_name], noise=NOISE[dataset_name], dataset_name=dataset_name, m=20)
 
 

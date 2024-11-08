@@ -13,24 +13,19 @@ SINGULARVALUE_CLIP = 0
 
 def ward_and_kolda_init(network: Network):
     S = np.concatenate([client.S for client in network.clients])
-    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
-    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
-    sigma_max = largest_eigenvalues[-1]
-    total_nb_points = np.sum([client.nb_samples for client in network.clients])
+    largest_singularvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_singularvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_singularvalues[-1]
 
-    kappa = np.inf
-    for i in range(20):
-        PhiV = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.plunging_dimension)
-        Phi = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.dim)
-        product = S @ Phi
-        eigenvalues = compute_svd(product)
-        if eigenvalues[0] / eigenvalues[-1] < kappa:
-            PhiU = Phi
+    PhiV = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.plunging_dimension)
+    PhiU = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.dim)
 
-    eta = 1 / sigma_max**2
+    mu, C = 0.5, 8
+    eta = 9 / (4 * C * mu * sigma_max)
+    D = C * mu / 9
     for client in network.clients:
-        client.U = client.S @ PhiU / (sigma_max**2 * eta**0.5)
-        client.V = eta**0.5 * sigma_max * PhiV
+        client.U = client.S @ PhiU  / (eta**0.5 * sigma_max * C)
+        client.V = eta**0.5 * sigma_max * D * PhiV
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
@@ -56,33 +51,10 @@ def random_MF_initialization(network: Network):
     largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
     sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
     sigma_max = largest_eigenvalues[-1]
-    std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (
-            network.dim + np.sum([client.nb_samples for client in network.clients])))
+    std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (network.dim + network.clients[0].nb_samples))
     for client in network.clients:
-        # std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (
-        #             network.dim + client.nb_samples))
-        client.set_initial_U(generate_gaussian_matrix(client.nb_samples, plunging_dimension, std))
-        client.set_initial_V(generate_gaussian_matrix(client.dim, plunging_dimension, std))
-    print(f"===> kappa: {sigma_max / sigma_min}")
-    return sigma_min, sigma_max
-
-
-def random_MF_initialization(network: Network):
-    """Implementation of the random initialisation of U,V.
-    From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
-    Neurips 2021"""
-    plunging_dimension = network.plunging_dimension
-    S = np.concatenate([client.S for client in network.clients])
-    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
-    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
-    sigma_max = largest_eigenvalues[-1]
-    std = sigma_min**2 / (np.sqrt(sigma_max**2 * plunging_dimension ** 3) * (
-            network.dim + np.sum([client.nb_samples for client in network.clients])))
-    for client in network.clients:
-        # std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (
-        #             network.dim + client.nb_samples))
-        client.set_initial_U(generate_gaussian_matrix(client.nb_samples, plunging_dimension, std))
-        client.set_initial_V(generate_gaussian_matrix(client.dim, plunging_dimension, std))
+        client.U = generate_gaussian_matrix(client.nb_samples, plunging_dimension, std)
+        client.V = generate_gaussian_matrix(network.dim, plunging_dimension, std)
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 

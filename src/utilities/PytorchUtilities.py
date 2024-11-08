@@ -56,7 +56,7 @@ def get_friedman(nb_clients):
 
 
 def get_w8a(nb_clients):
-    raw_X, raw_Y = load_svmlight_file("../../DATASETS/w8a/w8a")
+    raw_X, raw_Y = load_svmlight_file("../../../DATASETS/w8a/w8a")
     raw_X = raw_X.todense()
     return np.array_split(np.array(raw_X), nb_clients)
 

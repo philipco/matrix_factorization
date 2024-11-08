@@ -117,11 +117,11 @@ class GD(AbstractGradientDescent):
 
         S_stacked = np.concatenate([client.S for client in network.clients])
         _, singular_values, _ = scipy.linalg.svd(S_stacked)
-        self.sigma_max, self.sigma_min = singular_values[0], singular_values[-1]
+        self.sigma_max, self.sigma_min = singular_values[0], singular_values[network.plunging_dimension]
         assert self.sigma_min < self.sigma_max, "Error in singular values assignation."
-        std = self.sigma_min**2 / (np.sqrt(self.sigma_max**2 * network.plunging_dimension ** 3) * (
+        std = self.sigma_min / (np.sqrt(self.sigma_max * network.plunging_dimension ** 3) * (
                     network.dim + np.sum([client.nb_samples for client in network.clients])))
-        self.step_size = self.sigma_min**2 * std / (network.dim * self.sigma_max ** 6)
+        self.step_size = self.sigma_min * std ** 2 / (network.dim * self.sigma_max ** 3)
 
 
     def name(self):
@@ -147,10 +147,10 @@ class AlternateGD(AbstractGradientDescent):
 
     def __initialization__(self):
         self.sigma_min, self.sigma_max = ward_and_kolda_init(self.network)
-
+        # self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
     def __compute_step_size__(self):
-        mu = 0.5
-        self.step_size = 1 / self.sigma_max ** 2
+        mu, C = 0.5, 8
+        self.step_size =  9 / (4 * C * mu * self.sigma_max)
 
     def name(self):
         return "Alternate GD"
