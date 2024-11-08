@@ -52,7 +52,6 @@ class Client:
         return np.linalg.norm(self.S_star - self.U @ self.V.T, ord='fro') ** 2 / 2
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef, nuc_coef):
-        """Compute the local gradient w.r.t. the matrix U."""
         """Gradient of F w.r.t. variable U."""
         nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
         if nuc_coef != 0:
@@ -61,6 +60,14 @@ class Client:
             nuclear_grad = u[:,:rank] @ v[:,:rank].T
         sign_U = 2 * (U >= 0) - 1
         return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
+
+    def local_grad_wrt_V(self, V, l1_coef, l2_coef, nuc_coef):
+        """Gradient of F w.r.t. variable V."""
+        nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
+        if nuc_coef != 0:
+            raise ValueError("Nuclear norm not yet implemented.")
+        sign_V = 2 * (V >= 0) - 1
+        return (self.U @ V.T - self.S).T @ self.U #+ l1_coef * sign_V + l2_coef * V
 
     def set_initial_U(self, U):
         """Initialize matrix U."""
@@ -87,17 +94,7 @@ class Client:
     def local_power_iteration(self):
         """Run on the local client a step of power iteration."""
         # We update V.
-        V = self.S.T @ self.S @ self.V / self.nb_samples
-
-        # We orthogonalize V.
-        V = scipy.linalg.orth(V, rcond=0)
-
-        # We compute U.
-        U = self.S @ V
-
-        self.set_U(U)
-        self.set_V(V)
-        return V
+        self.V = self.S.T @ self.S @ self.V / self.nb_samples
 
 
 class ClientRealData(Client):
