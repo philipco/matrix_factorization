@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     errors = {}
     sigma_min = []
-    inits = ["SMART"]
+    inits = ["power0"]
     cond = {}
     for C in step_size_factors:
         errors[C] = []

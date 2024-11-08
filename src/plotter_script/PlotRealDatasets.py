@@ -51,8 +51,8 @@ if __name__ == '__main__':
     errors = {}
     error_at_optimal_solution = {}
 
-    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
-    inits = ["SMART", "POWER"]
+    labels = {"power0": r"$\alpha=0$", "power1": r"$\alpha=1$"}
+    inits = ["power0", "power1"]
 
     for init in inits:
         print(f"\t== {init} ==")
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             print(f"{init}\terror min:", errors[init][-1])
 
     COLORS = ["tab:blue", "tab:brown", "tab:green"]
-    init_colors = {"SMART": COLORS[0], "POWER": COLORS[1]}
+    init_colors = {"power0": COLORS[0], "power1": COLORS[1]}
 
     fig, axs = plt.subplots(1, 1, figsize=(3, 4))
 
@@ -83,7 +83,7 @@ if __name__ == '__main__':
                                           network.plunging_dimension)
 
     if error_optimal != 0:
-        z = [np.log10(error_optimal) for i in errors["SMART"]]
+        z = [np.log10(error_optimal) for i in errors["power0"]]
         axs.plot(z, color=COLORS[2], lw=3)
 
     init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
