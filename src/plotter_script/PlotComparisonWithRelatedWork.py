@@ -33,6 +33,28 @@ NUC_COEF = 0
 FONTSIZE=9
 
 
+def print_table_communication(datasets, nb_communication, keys):
+    columns = "l"*(len(datasets)+1)
+    table = ("\\begin{table}[]\n"
+             "\\begin{tabular}{" + "{0}\n".format(columns)) + "}\n"
+    head = r"$\# communication$" + "".join([f'& {name}' for name in datasets]) #
+    head += "\\\\ \n"
+    table += head
+    for key in keys:
+        rows = f"{key}"
+        for name in datasets:
+            nb = nb_communication[name][key]
+            if nb == 100:
+                rows += '& $+100$'
+            else:
+                rows += '& {0}'.format(nb)
+        rows += "\\\\ \n"
+        table += rows
+
+    table += ("\end{tabular}\n"
+              "\end{table}")
+    print(table)
+
 def print_table(datasets, errors, error_optimal, keys):
 
 
@@ -64,8 +86,11 @@ if __name__ == '__main__':
     inits = ["power0", "power1"]
     related_work = {"Alternate GD": AlternateGD, "GD": GD}
 
+    EPS = {"synth": -7, "mnist": 5.5, "celeba": 5, "w8a": 5}
+
     datasets = ["synth", "w8a", "mnist", "celeba"]
     errors = {name: {} for name in datasets}
+    nb_commmunications = {name: {} for name in datasets}
     error_at_optimal_solution = {name: {} for name in datasets}
     error_optimal = {}
     for dataset_name in datasets:
@@ -75,31 +100,28 @@ if __name__ == '__main__':
         network = Network(NB_CLIENTS[dataset_name], 200, 200, RANK_S[dataset_name],
                           LATENT_DIMENSION[dataset_name], noise=NOISE[dataset_name], dataset_name=dataset_name, m=20)
 
-
+        ## Optimal error. ###
+        error_optimal[dataset_name] = compute_optimal_error([client.S for client in network.clients],
+                                                            [c.nb_samples for c in network.clients], network.dim,
+                                                            network.plunging_dimension)
 
         for label, optim in related_work.items():
             print(f"\t== {label} ==")
             algo = optim(network, NB_EPOCHS[dataset_name], L1_COEF, L2_COEF, NUC_COEF)
-            errors[dataset_name][label] = algo.run()
+            errors[dataset_name][label], nb_commmunications[dataset_name][label] = algo.run(eps=EPS[dataset_name], optimal_error=error_optimal[dataset_name])
             print(f"{label}\terror min:", errors[dataset_name][label][-1])
 
         for init in inits:
             print(f"\t== {init} ==")
             algo = GD_ON_U(network, NB_EPOCHS[dataset_name], init, L1_COEF, L2_COEF, NUC_COEF,
                                 use_momentum=True)
-            errors[dataset_name][init + " GD"] = algo.run()
+            errors[dataset_name][init + " GD"], nb_commmunications[dataset_name][init + " GD"] = algo.run(eps=EPS[dataset_name], optimal_error=error_optimal[dataset_name])
             error_at_optimal_solution[dataset_name][init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
             local_power = LocalPower(network, 1 if init == "power0" else 2)
             errors[dataset_name][init + " local"] = local_power.run()
             print(f"{init}\terror min:", errors[dataset_name][init + " GD"][-1])
             print(f"{init}\terror min at optimal solution:", error_at_optimal_solution[dataset_name][init])
             print(f"{init}_local\terror min:", errors[dataset_name][init + " local"][-1])
-
-        ## Optimal error. ###
-        error_optimal[dataset_name] = compute_optimal_error([client.S for client in network.clients],
-                                              [c.nb_samples for c in network.clients], network.dim,
-                                              network.plunging_dimension)
-
 
         COLORS = ["tab:blue", "tab:brown", "tab:green", "tab:orange", "tab:red"]
         init_colors = {"power0 GD": COLORS[0], "power1 GD": COLORS[1], "GD": COLORS[3], "Alternate GD": COLORS[4]}
@@ -141,3 +163,4 @@ if __name__ == '__main__':
 
 
     print_table(datasets, errors, error_optimal, keys)
+    print_table_communication(datasets, nb_commmunications, keys)

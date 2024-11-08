@@ -61,7 +61,7 @@ if __name__ == '__main__':
             algo = optimization(network, NB_EPOCHS[dataset_name], init, L1_COEF, L2_COEF, NUC_COEF,
                                 use_momentum=use_momentum)
             key = init + "_momentum" if use_momentum else init
-            errors[key] = algo.run()
+            errors[key], _ = algo.run()
             error_at_optimal_solution[init] = algo.compute_exact_solution(L1_COEF, L2_COEF, NUC_COEF)
             print(f"{init}\terror min:", errors[init][-1])
 

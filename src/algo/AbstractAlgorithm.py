@@ -43,7 +43,7 @@ class AbstractAlgorithm(ABC):
         """Global objective function that we want to minimize."""
         return np.sum([client.loss(client.U, client.V, self.l1_coef, self.l2_coef, self.nuc_coef) for client in self.network.clients])
 
-    def run(self, eps=None):
+    def run(self, eps=None, optimal_error=None):
         """Run the algorithm of matrix factorisation."""
         self.errors.append(self.__F__())
         if eps is None:
@@ -51,11 +51,11 @@ class AbstractAlgorithm(ABC):
                 self.__epoch_update__(i)
         else:
             i = 0
-            while self.errors[-1] > eps and i < 1000:
+            while np.log10(self.errors[-1] - optimal_error) > eps and i < 100:
                 self.__epoch_update__(i)
                 i+=1
             if i == 1000:
                 print("Warning: requires more than 1000 iterations.")
             else:
                 print(f"Number of iterations: {i}")
-        return self.errors
+        return self.errors, i
