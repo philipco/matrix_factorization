@@ -1,8 +1,8 @@
 # In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting
 We present here the code of the experimental parts of the following paper:
 ```
-C. Philippenko, K. Scaman and L. Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated 
-Setting , 2024.
+Constantin Philippenko, Kevin Scaman and Laurent Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a 
+Federated Setting, Proceedings of the AAAI Conference on Artificial Intelligence 2025.
 ```
 
 In this paper, we analyze a distributed algorithm to compute a low-rank matrix factorization on $N$ clients, each 
@@ -40,7 +40,6 @@ Condition number on the X-axis, the logarithm of the loss F after 1000 local ite
 
 Goal: illustrate the impact of the sampled Gaussian matrices Phi on the convergence rate.
 
-
 **Left**: without noise. **Right**: with noise.
 
 <p float="left">
@@ -69,13 +68,22 @@ Goal: illustrate on real-life datasets how the algorithm behaves in practice.
 </p>
 
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name synth```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name synth```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name mnist```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name mnist```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name celeba```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name celeba```
 
-```python3 -m src.plotter_script.PlotRealDataset --dataset_name w8a```
+```python3 -m src.plotter_script.PlotRealDatasets --dataset_name w8a```
+
+### Used dataset.
+
+We use three real datasets: mnist, celeba and w8a that should be stored at this location ```~/GITHUB/DATASETS```.
+
+Mnist is automatically downloaded if it not present. The user should download w8a 
+[here](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/w8a) and celeba 
+[from Kaggle](https://www.kaggle.com/datasets/jessicali9530/celeba-dataset) 
+
 
 ## Requirements
 
@@ -99,7 +107,7 @@ If you use this code, please cite the following papers
 @article{philippenko2024indepth,
   title={In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting},
   author={Philippenko, Constantin and Scaman, Kevin and Massoulié, Laurent},
-  journal={arXiv e-prints},
-  year={2024}
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  year={2025}
 }
 ```

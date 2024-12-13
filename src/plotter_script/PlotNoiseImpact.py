@@ -15,7 +15,7 @@ from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 
-from src.algo.PowerMethods import DistributedPowerMethod
+from src.algo.PowerMethods import LocalPower
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -37,11 +37,11 @@ FONTSIZE = 9
 
 
 def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, latent_dim: int, l1_coef: int, l2_coef: int):
-    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$",  "LocalPower": 'LocalPower'}
+    labels = {"power0": r"$\alpha=0$", "POWER": r"$\alpha=1$",  "LocalPower": 'LocalPower'}
 
-    inits = ["SMART", "POWER"]
+    inits = ["power0", "POWER"]
     algo_name = ["LocalPower"]
-    related_work = [DistributedPowerMethod]
+    related_work = [LocalPower]
 
     errors = {name: [] for name in inits + algo_name}
     error_at_optimal_solution = {name: [] for name in inits + algo_name}
@@ -82,8 +82,8 @@ def plot_noise_impact(nb_clients: int, nb_samples: int, dim: int, rank_S: int, l
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
-    init_linestyle = {"SMART": "-.", "BI_SMART": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1)), "LocalPower": "-"}
-    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5],
+    init_linestyle = {"power0": "-.", "BI_power0": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1)), "LocalPower": "-"}
+    init_colors = {"power0": COLORS[0], "BI_power0": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5],
                    "LocalPower": COLORS[6]}
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))

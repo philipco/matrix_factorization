@@ -42,9 +42,9 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
 
     optim = GD_ON_U
 
-    labels = {"SMART": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
+    labels = {"power0": r"$\alpha=0$", "POWER": r"$\alpha=1$"}
 
-    inits = ["SMART", "POWER"]
+    inits = ["power0", "POWER"]
     errors = {name: [] for name in inits}
     error_after_elastic_net = {name: [] for name in inits}
     error_at_optimal_solution = {name: [] for name in inits}
@@ -73,8 +73,8 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
-    init_linestyle = {"SMART": "--", "BI_SMART": "--", "ORTHO": ":", "POWER": "--"} #(0, (3, 1, 1, 1))}
-    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
+    init_linestyle = {"power0": "--", "BI_power0": "--", "ORTHO": ":", "POWER": "--"} #(0, (3, 1, 1, 1))}
+    init_colors = {"power0": COLORS[0], "BI_power0": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 2.25))
     for init in inits:
@@ -110,11 +110,11 @@ def plot_errors_vs_condition_number(noise:int, l1_coef: int,  l2_coef: int,  nuc
                                                                          min(np.sum([c.nb_samples for c in network.clients]),
                                                                              network.dim))])
     if error_optimal != 0:
-        z = [np.log10(error_optimal) for i in cond["SMART"]]
+        z = [np.log10(error_optimal) for i in cond["power0"]]
         if USE_MOMENTUM:
-            axs.plot(np.array(cond["SMART"]) ** 1, z, color=COLORS[2], lw=2)
+            axs.plot(np.array(cond["power0"]) ** 1, z, color=COLORS[2], lw=2)
         else:
-            axs.plot(np.array(cond["SMART"]) ** 2, z, color=COLORS[2], lw=2)
+            axs.plot(np.array(cond["power0"]) ** 2, z, color=COLORS[2], lw=2)
 
     init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
                           lw=2, label=labels[init]) for init in inits]

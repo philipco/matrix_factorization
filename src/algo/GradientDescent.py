@@ -4,16 +4,15 @@ Created by Constantin Philippenko, 11th December 2023.
 from abc import abstractmethod
 
 import scipy
-from sklearn.linear_model import ElasticNet, LinearRegression, Ridge, SGDRegressor
+from sklearn.linear_model import ElasticNet, Ridge, SGDRegressor
 
-from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
 
 class AbstractGradientDescent(AbstractAlgorithm):
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
+    def __init__(self, network: Network, nb_epoch: int, l1_coef: int = 0, l2_coef: int = 0,
                  nuc_coef: int = 0, use_momentum: bool = False) -> None:
-        super().__init__(network, nb_epoch, rho, init_type)
+        super().__init__(network, nb_epoch)
 
         self.sigma_max, self.sigma_min = None, None
 
@@ -23,12 +22,6 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
         # MOMEMTUM
         self.use_momentum = use_momentum
-        if self.sigma_max is not None:
-            kappa = self.sigma_max ** 2 / self.sigma_min ** 2
-            self.momentum = 0.95 #(np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)  # 1 / self.largest_sv_S**2
-            # self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
-        else:
-            self.momentum = 1 / self.largest_sv_S**2
 
         # REGULARIZATION
         self.l1_coef = l1_coef
@@ -44,17 +37,9 @@ class AbstractGradientDescent(AbstractAlgorithm):
         """Compute the step-size of the gradient step."""
         self.step_size = 1 / (self.sigma_max**2)
 
+    @abstractmethod
     def __initialization__(self):
-        if self.init_type == "SMART":
-            self.network.power = 0
-            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
-        elif self.init_type == "POWER":
-            self.network.power = 1
-            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
-        elif self.init_type == "RANDOM":
-            self.sigma_min, self.sigma_max = random_MF_initialization(self.network)
-        else:
-            raise ValueError("Unrecognized type of initialization.")
+        pass
 
     @abstractmethod
     def __epoch_update__(self):
@@ -113,7 +98,24 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
 
 class GD(AbstractGradientDescent):
-    """Implement the Gradient Descent algorithm to find U,V factorising S."""
+    """Implement Gradient Descent algorithm to find U,V factorising S.
+    From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
+    Neurips 2021."""
+
+    def __initialization__(self):
+        self.sigma_min, self.sigma_max = ward_and_kolda_init(self.network)
+
+    def __init__(self, network: Network, nb_epoch: int, l1_coef: int = 0, l2_coef: int = 0,
+                 nuc_coef: int = 0, use_momentum: bool = False) -> None:
+        super().__init__(network, nb_epoch, l1_coef, l2_coef, nuc_coef, use_momentum)
+
+        assert self.sigma_min < self.sigma_max, "Error in singular values assignation."
+        std = self.sigma_min / (np.sqrt(self.sigma_max * network.plunging_dimension ** 3) * (
+                    network.dim + np.sum([client.nb_samples for client in network.clients])))
+        self.step_size = self.sigma_min * std ** 2 / (network.dim * self.sigma_max ** 3)
+        T = np.log(network.dim * self.sigma_min / std ) / (self.step_size * self.sigma_min) + np.log(self.sigma_min) / (self.step_size * self.sigma_min)
+        print(f"This algorithm will require around {T} iterations to converge.")
+
     def name(self):
         return "GD"
 
@@ -122,22 +124,24 @@ class GD(AbstractGradientDescent):
 
     def __epoch_update__(self, it: int):
         gradV = []
-        Vold = []
         for client in self.network.clients:
-            gradU = self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
-            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef, self.nuc_coef))
+            gradU = client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef, self.nuc_coef)
             client.U -= self.step_size * gradU
-            Vold.append(client.V)
         for client in self.network.clients:
-            client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
-                        - self.step_size * gradV[client.id])
+            client.V -= self.step_size * np.sum(gradV)
         self.errors.append(self.__F__())
 
 class AlternateGD(AbstractGradientDescent):
-    """Implement the Alternate Gradient Descent algorithm to find U,V factorising S.
-    E.g. Jain, P., Netrapalli, P., & Sanghavi, S., 2013. Low-rank matrix completion using alternating
-    minimization"""
+    """Implement Alternate Gradient Descent algorithm to find U,V factorising S.
+    Convergence of Alternating Gradient Descent for Matrix Factorization, Ward and Kolda,
+    Neurips 2023."""
+
+    def __initialization__(self):
+        self.sigma_min, self.sigma_max = ward_and_kolda_init(self.network)
+    def __compute_step_size__(self):
+        mu, C = 0.5, 8
+        self.step_size =  9 / (4 * C * mu * self.sigma_max)
 
     def name(self):
         return "Alternate GD"
@@ -147,20 +151,32 @@ class AlternateGD(AbstractGradientDescent):
 
     def __epoch_update__(self, it: int):
         gradV = []
-        Vold = []
+        assert all([np.all(self.network.clients[0].V == c.V) for c in self.network.clients[1:]]), \
+            "All V are not equal on each client."
         for client in self.network.clients:
-            client.U -= self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef)
-            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef))
-            Vold.append(client.V)
+            client.U -= self.step_size * client.local_grad_wrt_U(client.U, self.l1_coef, self.l2_coef, self.nuc_coef)
+            gradV.append(client.local_grad_wrt_V(client.V, self.l1_coef, self.l2_coef, self.nuc_coef))
+        new_V = self.network.clients[0].V - self.step_size * np.sum(gradV, axis=0)
         for client in self.network.clients:
-            client.V = ((1 - self.rho) * Vold[client.id]
-                        + self.rho * np.sum([self.network.W[client.id - 1, k - 1] * Vold[k] for k in range(self.nb_clients)], axis=0)
-                        - self.step_size * gradV[client.id])
+            client.V = new_V
         self.errors.append(self.__F__())
 
 
 class GD_ON_U(AbstractGradientDescent):
     """Gradient descent by optimizing only w.r.t. to matrix U."""
+
+    def __init__(self, network: Network, nb_epoch: int, init_type: str, l1_coef: int = 0, l2_coef: int = 0,
+                 nuc_coef: int = 0, use_momentum: bool = False) -> None:
+        self.init_type = init_type
+        super().__init__(network, nb_epoch, l1_coef, l2_coef, nuc_coef, use_momentum)
+
+    def __initialization__(self):
+        if self.init_type == "power0":
+            self.network.power = 0
+            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
+        elif self.init_type == "power1":
+            self.network.power = 1
+            self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
 
     def name(self):
         return "GD on U"

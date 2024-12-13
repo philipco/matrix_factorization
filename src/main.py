@@ -10,7 +10,7 @@ from src.algo.GradientDescent import GD_ON_U
 
 import matplotlib
 
-from src.algo.PowerMethods import DistributedPowerMethod
+from src.algo.PowerMethods import LocalPower
 
 matplotlib.rcParams.update({
     "pgf.texsystem": "pdflatex",
@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     optimizations = {"U": GD_ON_U}
     errors = {"UV": {}, "V": {}, "U": {}}
-    inits = ["SMART", "POWER"]
+    inits = ["power0", "power1"]
 
     # # RANDOM initialization for optimization on U,V
     # algo = DistributedPowerMethod(network, NB_EPOCHS // 10, 0.01, "RANDOM", 10)
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
 
     optim_colors = {"UV": COLORS[0], "V": COLORS[1], "U": COLORS[2]}
-    init_linestyle = {"RANDOM": "-.", "SMART": "-", "BI_SMART": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1))}
+    init_linestyle = {"RANDOM": "-.", "power0": "-", "BI_power0": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1))}
 
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))

@@ -52,24 +52,22 @@ class Client:
         return np.linalg.norm(self.S_star - self.U @ self.V.T, ord='fro') ** 2 / 2
 
     def local_grad_wrt_U(self, U, l1_coef, l2_coef, nuc_coef):
-        """Compute the local gradient w.r.t. the matrix U."""
         """Gradient of F w.r.t. variable U."""
         nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
         if nuc_coef != 0:
             rank = np.linalg.matrix_rank(U)
             u, s, v = np.linalg.svd(U, full_matrices=False)
             nuclear_grad = u[:,:rank] @ v[:,:rank].T
-        if not self.mask.all():
-            grad = []
-            for i in range(self.nb_samples):
-                grad_i = np.zeros(self.plunging_dimension)
-                for j in range(self.dim):
-                    if self.mask[i,j]:
-                        grad_i += (self.S[i,j] - self.U[i] @ self.V[j].T) * self.V[j]
-                grad.append(-grad_i)
-            return np.array(grad)
         sign_U = 2 * (U >= 0) - 1
         return (U @ self.V.T - self.S) @ self.V + l1_coef * sign_U + l2_coef * U + nuc_coef * nuclear_grad
+
+    def local_grad_wrt_V(self, V, l1_coef, l2_coef, nuc_coef):
+        """Gradient of F w.r.t. variable V."""
+        nuclear_grad = np.zeros((self.nb_samples, self.plunging_dimension))
+        if nuc_coef != 0:
+            raise ValueError("Nuclear norm not yet implemented.")
+        sign_V = 2 * (V >= 0) - 1
+        return (self.U @ V.T - self.S).T @ self.U #+ l1_coef * sign_V + l2_coef * V
 
     def set_initial_U(self, U):
         """Initialize matrix U."""
@@ -96,17 +94,7 @@ class Client:
     def local_power_iteration(self):
         """Run on the local client a step of power iteration."""
         # We update V.
-        V = self.S.T @ self.S @ self.V / self.nb_samples
-
-        # We orthogonalize V.
-        V = scipy.linalg.orth(V, rcond=0)
-
-        # We compute U.
-        U = self.S @ V
-
-        self.set_U(U)
-        self.set_V(V)
-        return V
+        self.V = self.S.T @ self.S @ self.V / self.nb_samples
 
 
 class ClientRealData(Client):
@@ -119,7 +107,7 @@ class ClientRealData(Client):
         self.nb_samples = nb_samples
         self.plunging_dimension = plunging_dimension
         self.mask = self.generate_mask(missing_value, nb_samples)
-        self.S_star = self.S = S_star.astype(np.float64)
+        self.S_star = S_star.astype(np.float64)
         self.S = np.copy(self.S_star)
         if noise != 0:
             self.S += np.random.normal(0, noise, size=(self.nb_samples, self.dim))

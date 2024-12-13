@@ -5,17 +5,12 @@ Created by Constantin Philippenko, 18th January 2024.
 import numpy as np
 import scipy
 
-from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import random_power_iteration
 
 
-class DistributedPowerMethod(AbstractAlgorithm):
+class LocalPower(AbstractAlgorithm):
     """Implement the distributed power method as presented in our paper."""
-
-    def __init__(self, network: Network, nb_epoch: int, rho: int, init_type: str, local_epoch: int) -> None:
-        super().__init__(network, nb_epoch, rho, init_type)
-        self.local_epoch = local_epoch
 
     def name(self):
         return "LocalPower"
@@ -24,15 +19,19 @@ class DistributedPowerMethod(AbstractAlgorithm):
         self.sigma_min, self.sigma_max = random_power_iteration(self.network)
 
     def __epoch_update__(self, i: int):
-        for k in range(self.local_epoch):
-            for client in self.network.clients:
-                 client.local_power_iteration()
-            self.errors.append(self.__F__())
+        self.__agregating__()
+        for client in self.network.clients:
+             client.local_power_iteration()
+        self.__agregating__()
+        self.errors.append(self.__F__())
+
+    def __agregating__(self):
         # Aggregation on non-orthonomalized vectors V.
         n = np.sum([client.nb_samples for client in self.network.clients])
         V = np.sum([client.V * client.nb_samples / n for client in self.network.clients], axis=0)
         # Orthogonalisation of V.
         V = scipy.linalg.orth(V, rcond=0)
         for client in self.network.clients:
-            client.set_V(V)
+            client.V = V
+            client.U = client.S @ V
 

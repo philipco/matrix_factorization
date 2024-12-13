@@ -11,6 +11,24 @@ from src.utilities.MatrixUtilities import power, compute_svd, generate_gaussian_
 SINGULARVALUE_CLIP = 0
 
 
+def ward_and_kolda_init(network: Network):
+    S = np.concatenate([client.S for client in network.clients])
+    largest_singularvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_singularvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_singularvalues[-1]
+
+    PhiV = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.plunging_dimension)
+    PhiU = generate_gaussian_matrix(network.dim, network.plunging_dimension, 1 / network.dim)
+
+    mu, C = 0.5, 8
+    eta = 9 / (4 * C * mu * sigma_max)
+    D = C * mu / 9
+    for client in network.clients:
+        client.U = client.S @ PhiU  / (eta**0.5 * sigma_max * C)
+        client.V = eta**0.5 * sigma_max * D * PhiV
+    print(f"===> kappa: {sigma_max / sigma_min}")
+    return sigma_min, sigma_max
+
 def random_power_iteration(network: Network):
     """Random initialisation of U and V as two Gaussian matrices."""
     plunging_dimension = network.plunging_dimension
@@ -24,19 +42,19 @@ def random_power_iteration(network: Network):
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
-def random_MF_initialization(network: Network):
+def ye_and_du_init(network: Network):
     """Implementation of the random initialisation of U,V.
     From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
-    Neurips 2021"""
+    Neurips 2021. This algo use a alternate GD."""
     plunging_dimension = network.plunging_dimension
     S = np.concatenate([client.S for client in network.clients])
-    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
-    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
-    sigma_max = largest_eigenvalues[-1]
-    std = sigma_min / (np.sqrt(sigma_max * plunging_dimension **3 ) * (network.dim + network.nb_samples))
+    largest_singularvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_singularvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_singularvalues[-1]
+    std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (network.dim + network.clients[0].nb_samples))
     for client in network.clients:
-        client.set_initial_U(generate_gaussian_matrix(network.nb_samples, plunging_dimension, std))
-        client.set_initial_V(generate_gaussian_matrix(network.dim, plunging_dimension, std))
+        client.U = generate_gaussian_matrix(client.nb_samples, plunging_dimension, std)
+        client.V = generate_gaussian_matrix(network.dim, plunging_dimension, std)
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 

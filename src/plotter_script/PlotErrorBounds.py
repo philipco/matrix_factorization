@@ -91,7 +91,7 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 
     optim = GD_ON_U
 
-    inits = ["SMART"]
+    inits = ["power0"]
     error_at_optimal_solution = {name: [] for name in inits}
     theoretical_bounds = {name: [] for name in inits}
     theoretical_probabilistic_bounds = {name: [] for name in inits}
@@ -111,9 +111,6 @@ def plot_errors_vs_condition_number(nb_clients: int, nb_samples: int, dim: int, 
 
 
     COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:cyan"]
-
-    init_linestyle = {"SMART": "-.", "BI_SMART": "--", "ORTHO": ":", "POWER": (0, (3, 1, 1, 1))}
-    init_colors = {"SMART": COLORS[0], "BI_SMART": COLORS[1], "ORTHO": COLORS[4], "POWER": COLORS[5]}
 
     fig, axs = plt.subplots(1, 1, figsize=(6, 4))
     for init in inits:
