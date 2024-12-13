@@ -25,7 +25,6 @@ class Network:
             self.nb_clients = nb_clients
             self.dim = dim
             self.plunging_dimension = plunging_dimension
-            # self.mask = self.generate_mask(missing_value, nb_samples)
             self.rank_S = rank_S
             self.noise = noise
             self.clients = self.generate_network_of_clients(rank_S, missing_value, nb_samples, seed, noise)
@@ -38,7 +37,6 @@ class Network:
             self.plunging_dimension = plunging_dimension
 
             self.dim = cameraman.shape[1]
-            # self.mask = self.generate_mask(missing_value, nb_samples)
 
             self.clients = []
             for c_id in range(self.nb_clients):
@@ -61,7 +59,6 @@ class Network:
             self.plunging_dimension = plunging_dimension
 
             self.dim = dataset[0].shape[1]
-            # self.mask = self.generate_mask(missing_value)
 
             self.clients = []
             for c_id in range(self.nb_clients):

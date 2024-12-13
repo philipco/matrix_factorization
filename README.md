@@ -1,8 +1,8 @@
 # In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting
 We present here the code of the experimental parts of the following paper:
 ```
-Constantin Philippenko, Kevin Scaman and Laurent Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a Federated 
-Setting , 2024.
+Constantin Philippenko, Kevin Scaman and Laurent Massoulié, In-depth Analysis of Low-rank Matrix Factorisation in a 
+Federated Setting, Proceedings of the AAAI Conference on Artificial Intelligence 2025.
 ```
 
 In this paper, we analyze a distributed algorithm to compute a low-rank matrix factorization on $N$ clients, each 
@@ -39,7 +39,6 @@ Run the following commands to generate the illustrative figures in the article.
 Condition number on the X-axis, the logarithm of the loss F after 1000 local iterations on the Y-axis.
 
 Goal: illustrate the impact of the sampled Gaussian matrices Phi on the convergence rate.
-
 
 **Left**: without noise. **Right**: with noise.
 
@@ -108,7 +107,7 @@ If you use this code, please cite the following papers
 @article{philippenko2024indepth,
   title={In-depth Analysis of Low-rank Matrix Factorisation in a Federated Setting},
   author={Philippenko, Constantin and Scaman, Kevin and Massoulié, Laurent},
-  journal={arXiv e-prints},
-  year={2024}
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  year={2025}
 }
 ```

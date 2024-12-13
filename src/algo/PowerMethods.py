@@ -4,9 +4,7 @@ Created by Constantin Philippenko, 18th January 2024.
 
 import numpy as np
 import scipy
-from networkx import network_simplex
 
-from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import random_power_iteration
 
