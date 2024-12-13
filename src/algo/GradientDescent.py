@@ -2,12 +2,10 @@
 Created by Constantin Philippenko, 11th December 2023.
 """
 from abc import abstractmethod
-from netrc import netrc
 
 import scipy
-from sklearn.linear_model import ElasticNet, LinearRegression, Ridge, SGDRegressor
+from sklearn.linear_model import ElasticNet, Ridge, SGDRegressor
 
-from src.Network import Network
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
 
@@ -24,12 +22,6 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
         # MOMEMTUM
         self.use_momentum = use_momentum
-        if self.sigma_max is not None:
-            kappa = self.sigma_max ** 2 / self.sigma_min ** 2
-            self.momentum = 0.95 #(np.sqrt(kappa) - 1) / (np.sqrt(kappa) + 1)  # 1 / self.largest_sv_S**2
-            # self.momentum = (np.sqrt(self.sigma_max**2) - np.sqrt(self.sigma_min**2)) / (np.sqrt(self.sigma_max**2) + np.sqrt(self.sigma_min**2))
-        else:
-            self.momentum = 1 / self.largest_sv_S**2
 
         # REGULARIZATION
         self.l1_coef = l1_coef
@@ -106,23 +98,23 @@ class AbstractGradientDescent(AbstractAlgorithm):
 
 
 class GD(AbstractGradientDescent):
-    """Implement the Gradient Descent algorithm to find U,V factorising S."""
+    """Implement Gradient Descent algorithm to find U,V factorising S.
+    From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
+    Neurips 2021."""
 
     def __initialization__(self):
-        self.sigma_min, self.sigma_max = random_MF_initialization(self.network)
+        self.sigma_min, self.sigma_max = ward_and_kolda_init(self.network)
 
     def __init__(self, network: Network, nb_epoch: int, l1_coef: int = 0, l2_coef: int = 0,
                  nuc_coef: int = 0, use_momentum: bool = False) -> None:
         super().__init__(network, nb_epoch, l1_coef, l2_coef, nuc_coef, use_momentum)
 
-        S_stacked = np.concatenate([client.S for client in network.clients])
-        _, singular_values, _ = scipy.linalg.svd(S_stacked)
-        self.sigma_max, self.sigma_min = singular_values[0], singular_values[network.plunging_dimension]
         assert self.sigma_min < self.sigma_max, "Error in singular values assignation."
         std = self.sigma_min / (np.sqrt(self.sigma_max * network.plunging_dimension ** 3) * (
                     network.dim + np.sum([client.nb_samples for client in network.clients])))
         self.step_size = self.sigma_min * std ** 2 / (network.dim * self.sigma_max ** 3)
-
+        T = np.log(network.dim * self.sigma_min / std ) / (self.step_size * self.sigma_min) + np.log(self.sigma_min) / (self.step_size * self.sigma_min)
+        print(f"This algorithm will require around {T} iterations to converge.")
 
     def name(self):
         return "GD"
@@ -141,13 +133,12 @@ class GD(AbstractGradientDescent):
         self.errors.append(self.__F__())
 
 class AlternateGD(AbstractGradientDescent):
-    """Implement the Alternate Gradient Descent algorithm to find U,V factorising S.
-    E.g. Jain, P., Netrapalli, P., & Sanghavi, S., 2013. Low-rank matrix completion using alternating
-    minimization"""
+    """Implement Alternate Gradient Descent algorithm to find U,V factorising S.
+    Convergence of Alternating Gradient Descent for Matrix Factorization, Ward and Kolda,
+    Neurips 2023."""
 
     def __initialization__(self):
         self.sigma_min, self.sigma_max = ward_and_kolda_init(self.network)
-        # self.sigma_min, self.sigma_max = distributed_power_initialization_for_GD_on_U(self.network)
     def __compute_step_size__(self):
         mu, C = 0.5, 8
         self.step_size =  9 / (4 * C * mu * self.sigma_max)

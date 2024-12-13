@@ -86,7 +86,7 @@ if __name__ == '__main__':
     inits = ["power0", "power1"]
     related_work = {"Alternate GD": AlternateGD, "GD": GD}
 
-    EPS = {"synth": -7, "mnist": 5.5, "celeba": 5, "w8a": 5}
+    EPS = {"synth": -5.5, "mnist": 5.5, "celeba": 4.5, "w8a": 5}
 
     datasets = ["synth", "w8a", "mnist", "celeba"]
     errors = {name: {} for name in datasets}

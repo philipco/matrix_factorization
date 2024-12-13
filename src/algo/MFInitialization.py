@@ -42,15 +42,15 @@ def random_power_iteration(network: Network):
     print(f"===> kappa: {sigma_max / sigma_min}")
     return sigma_min, sigma_max
 
-def random_MF_initialization(network: Network):
+def ye_and_du_init(network: Network):
     """Implementation of the random initialisation of U,V.
     From Global Convergence of Gradient Descent for Asymmetric Low-Rank Matrix Factorization, Ye and Du,
-    Neurips 2021"""
+    Neurips 2021. This algo use a alternate GD."""
     plunging_dimension = network.plunging_dimension
     S = np.concatenate([client.S for client in network.clients])
-    largest_eigenvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
-    sigma_min = largest_eigenvalues[0]  # smallest non-zero eigenvalue
-    sigma_max = largest_eigenvalues[-1]
+    largest_singularvalues = svds(S, k=network.plunging_dimension, which='LM')[1]
+    sigma_min = largest_singularvalues[0]  # smallest non-zero eigenvalue
+    sigma_max = largest_singularvalues[-1]
     std = sigma_min / (np.sqrt(sigma_max * plunging_dimension ** 3) * (network.dim + network.clients[0].nb_samples))
     for client in network.clients:
         client.U = generate_gaussian_matrix(client.nb_samples, plunging_dimension, std)
