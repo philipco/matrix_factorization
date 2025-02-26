@@ -4,10 +4,8 @@ Created by Constantin Philippenko, 11th December 2023.
 X-axis: iteration index. Y-axis:  logarithm of the loss F after 1000 local iterations.
 Goal: illustrate on real-life datasets how the algorithm behaves in practice.
 """
-import argparse
 
 import numpy as np
-import scipy
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -85,8 +83,6 @@ if __name__ == '__main__':
     labels = {"power0 GD": r"$\alpha=0$", "power1 GD": r"$\alpha=1$", "GD": "GD", "Alternate GD": "Alternate GD"}
     inits = ["power0", "power1"]
     related_work = {"Alternate GD": AlternateGD, "GD": GD}
-
-    EPS = {"synth": -5.5, "mnist": 5.5, "celeba": 4.5, "w8a": 5}
 
     datasets = ["synth", "w8a", "mnist", "celeba"]
     errors = {name: {} for name in datasets}

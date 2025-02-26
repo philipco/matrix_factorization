@@ -20,17 +20,18 @@ matplotlib.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-FONTSIZE=9
+FONTSIZE=27
 
 def plot_svd(svd, all_datasets):
-    fig, axs = plt.subplots(1, 1, figsize=(9, 4))
+    fig, axs = plt.subplots(1, 1, figsize=(9, 3))
     for dataset in all_datasets:
         axs.plot(np.log10(svd[dataset]), lw=3, label=dataset)
-    axs.set_ylabel(r"$\log_{10}(\sigma_k)$", fontsize=15)
-    axs.set_xlabel(r"$k$", fontsize=15)
-    plt.legend(loc="best", fontsize=15)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
+    axs.set_ylabel(r"$\log_{10}(\sigma_k)$", fontsize=FONTSIZE)
+    axs.set_xlabel(r"$k$", fontsize=FONTSIZE)
+    plt.legend(loc="lower right", fontsize=FONTSIZE, borderaxespad=0.1, labelspacing=0,
+                        handletextpad=0.2)
+    plt.xticks(fontsize=FONTSIZE)
+    plt.yticks(fontsize=FONTSIZE)
     plt.savefig("../../pictures/all_svd.pdf", dpi=600, bbox_inches='tight')
 
 if __name__ == '__main__':
