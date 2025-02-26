@@ -8,6 +8,8 @@ from sklearn.linear_model import ElasticNet, Ridge, SGDRegressor
 
 from src.algo.AbstractAlgorithm import AbstractAlgorithm
 from src.algo.MFInitialization import *
+from src.utilities.data.DatasetsSettings import EPS
+
 
 class AbstractGradientDescent(AbstractAlgorithm):
     def __init__(self, network: Network, nb_epoch: int, l1_coef: int = 0, l2_coef: int = 0,
@@ -109,11 +111,13 @@ class GD(AbstractGradientDescent):
                  nuc_coef: int = 0, use_momentum: bool = False) -> None:
         super().__init__(network, nb_epoch, l1_coef, l2_coef, nuc_coef, use_momentum)
 
+        # Here sigma_min is the r-th singular values.
         assert self.sigma_min < self.sigma_max, "Error in singular values assignation."
         std = self.sigma_min / (np.sqrt(self.sigma_max * network.plunging_dimension ** 3) * (
                     network.dim + np.sum([client.nb_samples for client in network.clients])))
-        self.step_size = self.sigma_min * std ** 2 / (network.dim * self.sigma_max ** 3)
-        T = np.log(network.dim * self.sigma_min / std ) / (self.step_size * self.sigma_min) + np.log(self.sigma_min) / (self.step_size * self.sigma_min)
+        self.step_size = self.sigma_min * std ** 2 / (network.plunging_dimension * self.sigma_max ** 3)
+        prec = 10**EPS[network.dataset_name]
+        T = np.log(network.plunging_dimension * self.sigma_min**2 / (std * prec)) / (self.step_size * self.sigma_min)
         print(f"This algorithm will require around {T} iterations to converge.")
 
     def name(self):

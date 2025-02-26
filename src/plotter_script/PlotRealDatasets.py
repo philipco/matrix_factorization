@@ -8,7 +8,7 @@ import argparse
 
 import numpy as np
 import scipy
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, ticker
 from matplotlib.lines import Line2D
 
 from src.Network import Network
@@ -29,7 +29,8 @@ L1_COEF = 0 #10**-2
 L2_COEF = 0 #10**-3
 NUC_COEF = 0
 
-FONTSIZE=9
+FONTSIZE=20
+LW = 2
 
 if __name__ == '__main__':
 
@@ -71,11 +72,11 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(1, 1, figsize=(3, 4))
 
     for init in inits:
-        axs.plot(np.log10(errors[init]), color=init_colors[init], linestyle="--")
-        axs.plot(np.log10(errors[init + "_momentum"]), color=init_colors[init], linestyle="-.")
+        axs.plot(np.log10(errors[init]), color=init_colors[init], linestyle="--", lw=LW)
+        axs.plot(np.log10(errors[init + "_momentum"]), color=init_colors[init], linestyle="-.", lw=LW)
         x = np.linspace(0, len(errors[init]), num=10)
         z = [np.log10(error_at_optimal_solution[init]) for i in x]
-        axs.plot(x, z, color=init_colors[init], marker="*")
+        axs.plot(x, z, color=init_colors[init], marker="*", lw=LW)
 
     ## Optimal error. ###
     error_optimal = compute_optimal_error([client.S for client in network.clients],
@@ -84,23 +85,24 @@ if __name__ == '__main__':
 
     if error_optimal != 0:
         z = [np.log10(error_optimal) for i in errors["power0"]]
-        axs.plot(z, color=COLORS[2], lw=3)
+        axs.plot(z, color=COLORS[2], lw=LW)
 
     init_legend = [Line2D([0], [0], color=init_colors[init], linestyle="-",
-                          lw=3, label=labels[init]) for init in inits]
+                          lw=LW, label=labels[init]) for init in inits]
     if error_optimal != 0:
         init_legend.append(
-            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=2, label=r'$ \sum_{i>r} \sigma_i^2 / 2$'))
+            Line2D([0], [0], linestyle="-", color=COLORS[2], lw=LW, label=r'$ \sum_{i>r} \frac{\sigma_i^2}{2}$'))
     init_legend.append(Line2D([0], [0], linestyle="-", color='black', lw=2, marker="*",
                               label="Exact solution"))
-    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="Gradient descent (GD)"))
-    init_legend.append(Line2D([0], [0], linestyle="-.", color='black', lw=2, label="GD w. momentum"))
+    init_legend.append(Line2D([0], [0], linestyle="--", color='black', lw=2, label="GD"))
+    init_legend.append(Line2D([0], [0], linestyle="-.", color='black', lw=2, label="GD w. mom."))
 
     if dataset_name == "synth":
-        l2 = axs.legend(handles=init_legend, loc='upper right', fontsize=FONTSIZE)
+        l2 = axs.legend(handles=init_legend, loc='upper center', fontsize=16, borderaxespad=0.1, labelspacing=0,
+                        handletextpad=0.2)
         axs.add_artist(l2)
-    axs.set_ylabel("Log(Relative error)", fontsize=FONTSIZE)
-    axs.set_xlabel("Number of iterations", fontsize=FONTSIZE)
+    #axs.set_ylabel(r"$\log_{10}(\|\mathbf{S} - \mathbf{U} \mathbf{V}^\top \|_{\mathrm{F}})$", fontsize=FONTSIZE)
+    #axs.set_xlabel(r"\# of iterations", fontsize=FONTSIZE)
     title = f"../../pictures/{dataset_name}_N{network.nb_clients}_d{network.dim}_r{network.plunging_dimension}_{algo.variable_optimization()}"
     if NOISE[dataset_name] != 0:
         title += f"_eps{NOISE[dataset_name]}"
@@ -110,4 +112,8 @@ if __name__ == '__main__':
         title += f"_ridge{L2_COEF}"
     if algo.nuc_coef != 0:
         title += f"nuc{NUC_COEF}"
+    plt.xticks(fontsize=FONTSIZE)
+    plt.yticks(fontsize=FONTSIZE)
+
+
     plt.savefig(f"{title}.pdf", dpi=600, bbox_inches='tight')
